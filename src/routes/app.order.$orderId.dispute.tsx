@@ -61,8 +61,9 @@ function Dispute() {
 
       toast.success("자료 보존 모드 전환 + 증빙 패키지 발급 완료");
       navigate({ to: "/app/order/$orderId", params: { orderId } });
-    } catch (e: any) {
-      toast.error(e.message ?? "신청 실패");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "신청 실패";
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }

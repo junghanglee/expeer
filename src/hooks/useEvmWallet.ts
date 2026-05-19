@@ -41,9 +41,21 @@ const ERC20_ABI = [
   },
 ] as const;
 
-export function getInjectedProvider(): any | null {
+type Eip1193Provider = {
+  request: <T = unknown>(args: { method: string; params?: unknown[] }) => Promise<T>;
+  on?: (event: string, listener: (...args: unknown[]) => void) => void;
+  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+};
+
+declare global {
+  interface Window {
+    ethereum?: Eip1193Provider;
+  }
+}
+
+export function getInjectedProvider(): Eip1193Provider | null {
   if (typeof window === "undefined") return null;
-  return (window as any).ethereum ?? null;
+  return window.ethereum ?? null;
 }
 
 export function isEvmInjected(): boolean {
@@ -65,16 +77,23 @@ export function useEvmWallet() {
       setAddress((accounts[0] as Address | undefined) ?? null);
       const cid: string = await provider.request({ method: "eth_chainId" });
       setChainId(parseInt(cid, 16));
-    } catch (e: any) {
-      setError(e?.message ?? "지갑 상태를 읽지 못했습니다");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "지갑 상태를 읽지 못했습니다";
+      setError(message);
     }
   }, [provider]);
 
   useEffect(() => {
     if (!provider) return;
     refresh();
-    const onAccounts = (accs: string[]) => setAddress((accs[0] as Address | undefined) ?? null);
-    const onChain = (cid: string) => setChainId(parseInt(cid, 16));
+    const onAccounts = (...args: unknown[]) => {
+      const accs = Array.isArray(args[0]) ? (args[0] as string[]) : [];
+      setAddress((accs[0] as Address | undefined) ?? null);
+    };
+    const onChain = (...args: unknown[]) => {
+      const cid = typeof args[0] === "string" ? args[0] : "0x0";
+      setChainId(parseInt(cid, 16));
+    };
     provider.on?.("accountsChanged", onAccounts);
     provider.on?.("chainChanged", onChain);
     return () => {
@@ -95,8 +114,9 @@ export function useEvmWallet() {
       const a = (accs[0] as Address | undefined) ?? null;
       setAddress(a);
       return a;
-    } catch (e: any) {
-      setError(e?.message ?? "지갑 연결이 거부되었습니다");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "지갑 연결이 거부되었습니다";
+      setError(message);
       return null;
     } finally {
       setConnecting(false);
@@ -114,9 +134,13 @@ export function useEvmWallet() {
           params: [{ chainId: hex }],
         });
         return true;
-      } catch (e: any) {
+      } catch (e: unknown) {
         // 4902: unknown chain — try add
-        if (e?.code === 4902) {
+        const code =
+          typeof e === "object" && e !== null && "code" in e
+            ? (e as { code?: unknown }).code
+            : null;
+        if (code === 4902) {
           try {
             await provider.request({
               method: "wallet_addEthereumChain",
@@ -133,12 +157,14 @@ export function useEvmWallet() {
               ],
             });
             return true;
-          } catch (addErr: any) {
-            setError(addErr?.message ?? "체인 추가 실패");
+          } catch (addErr: unknown) {
+            const message = addErr instanceof Error ? addErr.message : "체인 추가 실패";
+            setError(message);
             return false;
           }
         }
-        setError(e?.message ?? "체인 전환 실패");
+        const message = e instanceof Error ? e.message : "체인 전환 실패";
+        setError(message);
         return false;
       }
     },

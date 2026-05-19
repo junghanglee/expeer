@@ -69,7 +69,7 @@ export function NumberStepper({
           value={value}
           disabled={disabled}
           placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value.replace(/[^\d.\-]/g, ""))}
+          onChange={(e) => onChange(e.target.value.replace(/[^\d.-]/g, ""))}
           className={`num-display w-full bg-transparent text-[15px] text-foreground outline-none disabled:text-muted-foreground ${inputClassName ?? ""}`}
         />
         {unit && <span className="text-[11px] font-bold text-muted-foreground">{unit}</span>}

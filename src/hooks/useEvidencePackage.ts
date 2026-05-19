@@ -25,8 +25,9 @@ export function useEvidencePackage() {
       a.remove();
       URL.revokeObjectURL(url);
       toast.success(`증빙 패키지 다운로드 완료 (${(res.sizeBytes / 1024).toFixed(1)} KB)`);
-    } catch (e: any) {
-      toast.error(e.message ?? "패키지 생성 실패");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "패키지 생성 실패";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { zipSync, strToU8 } from "fflate";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function maskAccount(s: string | null | undefined) {
   if (!s) return "";
@@ -14,11 +16,22 @@ function maskAddress(s: string | null | undefined) {
   return s.slice(0, 6) + "..." + s.slice(-4);
 }
 
+type SupabaseLike = SupabaseClient<Database>;
+
+type EvidenceContext = {
+  supabase: SupabaseLike;
+  userId: string;
+};
+
+type OrderRecord = Database["public"]["Tables"]["orders"]["Row"];
+type MessageRecord = Database["public"]["Tables"]["messages"]["Row"];
+type TransferRecord = Database["public"]["Tables"]["transfers"]["Row"];
+
 export const buildEvidencePackage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { orderId: string }) => data)
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context as any;
+    const { supabase, userId } = context as EvidenceContext;
     const { orderId } = data;
 
     // 1) Order — RLS가 당사자만 허용
@@ -48,9 +61,9 @@ export const buildEvidencePackage = createServerFn({ method: "POST" })
         supabase.from("profiles").select("nickname,email").eq("id", order.seller_id).maybeSingle(),
       ]);
 
-    const messages = messagesRes.data ?? [];
+    const messages = (messagesRes.data ?? []) as MessageRecord[];
     const proofs = proofsRes.data ?? [];
-    const transfers = transfersRes.data ?? [];
+    const transfers = (transfersRes.data ?? []) as TransferRecord[];
     const disputes = disputesRes.data ?? [];
 
     // 3) 마스킹된 요약
@@ -91,7 +104,7 @@ export const buildEvidencePackage = createServerFn({ method: "POST" })
     };
 
     // 4) 채팅 로그 텍스트 (사람이 읽기 쉬운 형식)
-    const chatLines = messages.map((m: any) => {
+    const chatLines = messages.map((m) => {
       const role =
         m.sender_id === order.buyer_id
           ? "[BUYER]"
@@ -101,7 +114,7 @@ export const buildEvidencePackage = createServerFn({ method: "POST" })
       return `${m.created_at}  ${role}  (${m.type})  ${m.content ?? ""}${m.attachment_url ? `  <첨부: ${m.attachment_url}>` : ""}`;
     });
 
-    const transfersMasked = transfers.map((t: any) => ({
+    const transfersMasked = transfers.map((t) => ({
       ...t,
       to_address: maskAddress(t.to_address),
     }));

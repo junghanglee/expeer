@@ -86,7 +86,6 @@ export function CameraCapture({
     <div className="space-y-2">
       <div className="relative overflow-hidden rounded-2xl bg-black">
         {preview ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={preview} alt="preview" className="h-64 w-full object-cover" />
         ) : (
           <video ref={videoRef} playsInline muted className="h-64 w-full object-cover" />

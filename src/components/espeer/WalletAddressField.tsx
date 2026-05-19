@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, AlertTriangle, QrCode, ClipboardPaste, Bookmark, ChevronDown } from "lucide-react";
 import type { CryptoAsset } from "@/data/mock";
 
@@ -232,6 +232,3 @@ export function AddressBadge({ asset, address }: { asset: CryptoAsset; address: 
     </span>
   );
 }
-
-// 사용하지 않으면 빌드 경고가 날 수 있어 명시적 export 보장
-useEffect; // tree-shake guard

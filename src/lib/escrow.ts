@@ -149,12 +149,12 @@ export function getPublicClient(chain: SupportedChain) {
 }
 
 export function getWalletClient(chain: SupportedChain) {
-  if (typeof window === "undefined" || !(window as any).ethereum) {
+  if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("지갑이 연결되지 않았습니다. MetaMask 등을 설치해주세요");
   }
   return createWalletClient({
     chain: CHAIN_MAP[chain],
-    transport: custom((window as any).ethereum),
+    transport: custom(window.ethereum),
   });
 }
 

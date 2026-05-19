@@ -123,8 +123,8 @@ export const getQuotes = createServerFn({ method: "GET" })
       let primaryError: string | null = null;
       try {
         quotes = await fetchFromCMC(symbols);
-      } catch (e: any) {
-        primaryError = e?.message ?? "cmc_failed";
+      } catch (e: unknown) {
+        primaryError = e instanceof Error ? e.message : "cmc_failed";
         console.warn("[prices] CMC failed, falling back to CoinGecko:", primaryError);
       }
 
