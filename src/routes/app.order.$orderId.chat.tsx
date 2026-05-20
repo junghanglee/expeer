@@ -42,7 +42,7 @@ function fmtTs(iso: string) {
 function ChatRoom() {
   const { orderId } = Route.useParams();
   const { user } = useAuth();
-  const { order, loading: orderLoading } = useOrder(orderId);
+  const { order, loading: orderLoading, refresh: refreshOrder } = useOrder(orderId);
   const { messages, loading: msgLoading } = useMessages(orderId);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -123,7 +123,7 @@ function ChatRoom() {
 
       {/* 거래 상태 카드 */}
       <StatusCard status={status} isBuyer={isBuyer} />
-      <ActionBar order={order} isBuyer={isBuyer} userId={user?.id} />
+      <ActionBar order={order} isBuyer={isBuyer} userId={user?.id} onOrderChange={refreshOrder} />
 
       {/* 채팅 본문 */}
       <div ref={scroller} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
@@ -258,10 +258,12 @@ function ActionBar({
   order,
   isBuyer,
   userId,
+  onOrderChange,
 }: {
   order: OrderRow;
   isBuyer: boolean;
   userId?: string;
+  onOrderChange?: () => void | Promise<void>;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const escrow = useEscrowVault();
@@ -280,6 +282,7 @@ function ActionBar({
     try {
       await markOrderPaid(order.id);
       await sysMsg("📢 입금 완료를 알렸습니다. 판매자가 확인 후 코인을 릴리즈합니다.");
+      await onOrderChange?.();
       toast.success("입금 완료를 판매자에게 알렸습니다");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "처리 실패");
@@ -304,11 +307,13 @@ function ActionBar({
           order.id,
         );
         await sysMsg(`✅ 입금 확인 → 코인 릴리즈 트랜잭션 전송됨\nTx: ${tx.slice(0, 10)}...`);
+        await onOrderChange?.();
         toast.success("릴리즈 트랜잭션 전송 완료. 블록 확인 후 자동 반영됩니다.");
       } else {
         // 에스크로 미사용 직접거래
         await releaseOrder(order.id);
         await sysMsg("✅ 입금 확인 완료. 거래가 종료되었습니다.");
+        await onOrderChange?.();
         toast.success("거래 완료");
       }
     } catch (e: unknown) {
@@ -331,6 +336,7 @@ function ActionBar({
         status: "open",
       });
       await sysMsg(`⚠️ 분쟁이 접수되었습니다: ${reason.trim()}`);
+      await onOrderChange?.();
       toast.success("분쟁이 접수되었습니다. 운영자가 검토합니다.");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "분쟁 접수 실패");

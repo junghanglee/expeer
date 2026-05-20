@@ -170,6 +170,24 @@ export async function confirmPayment(id: string) {
 
 export async function releaseOrder(id: string) {
   const now = new Date().toISOString();
+
+  // DB 상태머신은 판매자 확인을 거쳐 완료 처리하도록 제한한다.
+  // paid/proof_uploaded → confirmed → completed 순서로 갱신해 RLS/트리거와 UI 흐름을 맞춘다.
+  const { data: current, error: readError } = await supabase
+    .from("orders")
+    .select("status")
+    .eq("id", id)
+    .single();
+  if (readError) throw readError;
+
+  if (current.status === "paid" || current.status === "proof_uploaded") {
+    const { error: confirmError } = await supabase
+      .from("orders")
+      .update({ status: "confirmed", confirmed_at: now })
+      .eq("id", id);
+    if (confirmError) throw confirmError;
+  }
+
   const { error } = await supabase
     .from("orders")
     .update({

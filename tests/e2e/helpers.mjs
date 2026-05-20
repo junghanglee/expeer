@@ -38,10 +38,13 @@ export async function signupUser(prefix) {
   if (error) throw error;
   if (!data.user) throw new Error(`${prefix} signUp did not return a user`);
 
-  if (!data.session) {
+  let session = data.session;
+  if (!session) {
     const signIn = await supabase.auth.signInWithPassword({ email, password });
     if (signIn.error) throw signIn.error;
+    session = signIn.data.session;
   }
+  if (!session) throw new Error(`${prefix} signUp did not return a session`);
 
   const { error: profileError } = await supabase
     .from("profiles")
@@ -49,7 +52,7 @@ export async function signupUser(prefix) {
     .eq("id", data.user.id);
   if (profileError) throw profileError;
 
-  return { supabase, user: data.user, email, password, nickname, stamp };
+  return { supabase, user: data.user, session, email, password, nickname, stamp };
 }
 
 export async function createBankAccount(supabase, userId, nickname, stamp, bankName = "토스뱅크") {
