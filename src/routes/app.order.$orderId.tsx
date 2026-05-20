@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { AppHeader } from "@/components/espeer/AppHeader";
 import { OrderStatusStepper } from "@/components/espeer/OrderStatusStepper";
@@ -57,6 +57,7 @@ interface BankInfo {
 
 function OrderDetail() {
   const { orderId } = Route.useParams();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { user } = useAuth();
   const navigate = useNavigate();
   const { order, loading, refresh } = useOrder(orderId);
@@ -113,6 +114,11 @@ function OrderDetail() {
         <div className="px-5 py-8 text-center text-muted-foreground">존재하지 않는 주문입니다.</div>
       </PhoneShell>
     );
+  }
+
+  // Child routes such as /app/order/$orderId/chat must render their own screen.
+  if (pathname !== `/app/order/${order.id}`) {
+    return <Outlet />;
   }
 
   const isBuyer = user?.id === order.buyer_id;

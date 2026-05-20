@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { Section } from "@/components/espeer/Section";
@@ -53,6 +53,12 @@ const progressStatuses = [
 const completedStatuses = ["completed", "cancelled", "expired"];
 
 function ActivityPage() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  if (pathname !== "/app/selling") {
+    return <Outlet />;
+  }
+
   const { user } = useAuth();
   const [kindTab, setKindTab] = useState<KindTab>("all");
   const [statusTab, setStatusTab] = useState<StatusTab>("all");

@@ -13,6 +13,7 @@ import { createOrder } from "@/hooks/useOrders";
 import { useFeeSettings } from "@/hooks/useAppSettings";
 import { networkToChain } from "@/lib/escrow";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/app/order/new/$adId")({
   head: () => ({ meta: [{ title: "주문 생성 — EXPEER" }] }),
@@ -113,6 +114,9 @@ function NewOrder() {
     setSubmitting(true);
     try {
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      const sellerBankId = isBuy
+        ? await findPrimaryBankAccountId(offer.user_id)
+        : null;
       const order = await createOrder({
         ad_id: offer.id,
         buyer_id: isBuy ? user.id : offer.user_id,
@@ -125,7 +129,7 @@ function NewOrder() {
         amount: tokens,
         fiat_amount: fiatNum,
         buyer_bank_account_id: isBuy ? bankId : null,
-        seller_bank_account_id: !isBuy ? bankId : null,
+        seller_bank_account_id: isBuy ? sellerBankId : bankId,
         buyer_wallet_id: isBuy ? walletId : null,
         expires_at: expiresAt,
         status: "created",
@@ -314,6 +318,14 @@ function NewOrder() {
       </div>
     </PhoneShell>
   );
+}
+
+async function findPrimaryBankAccountId(userId: string) {
+  const { data, error } = await supabase.rpc("get_primary_bank_account_id", {
+    _user_id: userId,
+  });
+  if (error) throw error;
+  return data ?? null;
 }
 
 function Check({ ok, text }: { ok: boolean; text: string }) {

@@ -75,7 +75,12 @@ export async function createOrder(input: TablesInsert<"orders">) {
 
   // KYC 한도 사전 체크 (KRW 기준). 실패 시 명확한 메시지로 throw.
   if (input.fiat === "KRW" || !input.fiat) {
-    const limit = await checkOrderLimit({ data: { fiatAmountKrw: fiatAmount } });
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    const limit = await checkOrderLimit({
+      data: { fiatAmountKrw: fiatAmount },
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
     if (!limit.ok) {
       throw new Error(limit.reason ?? "거래 한도를 초과합니다");
     }
