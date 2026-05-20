@@ -4,6 +4,7 @@ import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { Section } from "@/components/espeer/Section";
 import { BigNumber } from "@/components/espeer/BigNumber";
 import { useAuth } from "@/lib/auth";
+import { useCounterpartyTrust } from "@/hooks/useCounterpartyTrust";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import {
@@ -422,8 +423,14 @@ function fmtAmount(n: number) {
 function ActivityCard({ order, userId }: { order: ActivityOrder; userId?: string }) {
   const isFiat = order.fiat === "KRW";
   const chatEnabled = order.status !== "expired";
+  const counterpartId = order.buyer_id === userId ? order.seller_id : order.buyer_id;
+  const { profile: trustProfile, rating, blacklistStatus } = useCounterpartyTrust(counterpartId);
   const counterpartName =
-    order.counterpart?.nickname ?? order.counterpart?.email?.split("@")[0] ?? "거래 상대";
+    trustProfile?.nickname ??
+    trustProfile?.email?.split("@")[0] ??
+    order.counterpart?.nickname ??
+    order.counterpart?.email?.split("@")[0] ??
+    "거래 상대";
 
   return (
     <div className="rounded-2xl border border-border bg-card p-3 shadow-sm">
@@ -458,6 +465,13 @@ function ActivityCard({ order, userId }: { order: ActivityOrder; userId?: string
           <b className="text-foreground">{counterpartName}</b>
         </div>
         <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
+          <span className="text-muted-foreground">평판/검증</span>
+          <b className="max-w-[190px] truncate text-right text-foreground">
+            {rating > 0 ? `★ ${rating.toFixed(2)}` : "평가 대기"} · {" "}
+            {blacklistStatus === "clear" ? "블랙리스트 특이사항 없음" : "추가 확인 필요"}
+          </b>
+        </div>
+        <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
           <span className="text-muted-foreground">거래방 다음 업무</span>
           <b className="max-w-[190px] truncate text-right text-foreground">
             {nextAction(order, userId)}
@@ -472,10 +486,20 @@ function ActivityCard({ order, userId }: { order: ActivityOrder; userId?: string
       </div>
 
       <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold">
-        <span className="rounded-lg bg-primary-soft py-1.5 text-primary">상대검증</span>
+        <span className="rounded-lg bg-primary-soft py-1.5 text-primary">상대평판</span>
+        <span className="rounded-lg bg-success-soft py-1.5 text-success">블랙리스트 검증</span>
         <span className="rounded-lg bg-warning-soft py-1.5 text-warning">입금확인</span>
-        <span className="rounded-lg bg-success-soft py-1.5 text-success">전송승인</span>
       </div>
+
+      {order.status === "disputed" && (
+        <Link
+          to="/app/order/$orderId/dispute"
+          params={{ orderId: order.id }}
+          className="mt-2 block rounded-xl border border-border bg-surface px-3 py-2 text-center text-[11px] font-bold text-foreground/80"
+        >
+          제출용 거래 자료 다운로드
+        </Link>
+      )}
 
       {completedStatuses.includes(order.status) && (
         <div className="mt-1.5 text-[10px] text-muted-foreground">

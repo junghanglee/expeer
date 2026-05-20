@@ -30,6 +30,7 @@ import { EscrowPanel } from "@/components/espeer/EscrowPanel";
 import { networkToChain, type SupportedChain } from "@/lib/escrow";
 import { toast } from "sonner";
 import { useEvidencePackage as useEvidencePackageHook } from "@/hooks/useEvidencePackage";
+import { CounterpartyTrustCard } from "@/components/espeer/CounterpartyTrustCard";
 
 const STATUS_LABEL: Record<string, string> = {
   created: "결제 대기",
@@ -124,6 +125,7 @@ function OrderDetail() {
 
   const isBuyer = user?.id === order.buyer_id;
   const isSeller = user?.id === order.seller_id;
+  const counterpartId = isBuyer ? order.seller_id : isSeller ? order.buyer_id : undefined;
   const status = order.status;
   const escrowChain: SupportedChain | null =
     (order.chain as SupportedChain | null) ?? networkToChain(order.network);
@@ -209,6 +211,8 @@ function OrderDetail() {
         fiatAmount={Number(order.fiat_amount)}
         remainSec={remainSec}
       />
+
+      <CounterpartyTrustCard userId={counterpartId} />
 
       {/* 수수료 내역 */}
       <Section title="수수료 내역">
@@ -535,13 +539,13 @@ function NextActionCard({
     desc = "판매자가 입금 내역을 확인 중입니다. 문제가 있으면 채팅 또는 분쟁 신청을 이용하세요.";
     items = ["채팅 알림 확인", "입금증 보관", "필요 시 분쟁 신청"];
   } else if (status === "disputed") {
-    title = "지금 해야 할 일: 증빙 보관";
-    desc = "거래 자료를 다운로드하고, 채팅/입금증/계좌 정보를 보존하세요.";
-    items = ["증빙 패키지 다운로드", "채팅 내용 확인", "은행/수사기관 제출 준비"];
+    title = "자료 보존 상태";
+    desc = "필요하면 제출용 거래 자료를 다운로드하고, 채팅/입금증/온체인 기록을 보존하세요.";
+    items = ["제출용 자료 다운로드", "채팅·입금증 확인", "은행/수사기관 제출 준비"];
   } else if (status === "released" || status === "completed") {
     title = "거래 완료";
-    desc = "거래가 완료되었습니다. 필요하면 상대방 평가를 남겨 주세요.";
-    items = ["수령/지급 내역 확인", "상대방 평가", "증빙 보관"];
+    desc = "거래가 완료되었습니다. 상대방 평가를 남기면 다음 거래자의 판단에 도움이 됩니다.";
+    items = ["수령/지급 내역 확인", "상대방 평가", "평판 반영"];
   }
 
   return (
@@ -626,7 +630,7 @@ function DisputedNotice({ orderId }: { orderId: string }) {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-4 text-[12px] text-foreground">
-        <div className="font-bold">제공되는 증빙 자료 목록</div>
+        <div className="font-bold">제출용 자료에 포함되는 항목</div>
         <ul className="mt-2 space-y-1 text-muted-foreground">
           <li>• POLICY.txt — EXPEER 분쟁 처리 정책</li>
           <li>• summary.json — 주문/당사자 요약 (개인정보 마스킹)</li>
@@ -642,7 +646,7 @@ function DisputedNotice({ orderId }: { orderId: string }) {
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary-soft py-2.5 text-[12px] font-bold text-primary disabled:opacity-50"
         >
           <FileText className="h-4 w-4" />
-          {loading ? "패키지 생성 중..." : "증빙 패키지 (.zip) 다운로드"}
+          {loading ? "자료 생성 중..." : "제출용 거래 자료 (.zip) 다운로드"}
         </button>
       </div>
     </div>

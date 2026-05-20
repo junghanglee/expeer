@@ -167,15 +167,15 @@ export const buildEvidencePackage = createServerFn({ method: "POST" })
     const files: Record<string, Uint8Array> = {
       "README.txt": strToU8(
         [
-          "EXPEER 거래 증빙 패키지",
+          "EXPEER 제출용 거래 자료",
           "",
           `발급 시각: ${summary.issued_at}`,
           `주문 ID: ${order.id}`,
           `발급 대상: ${userId} (${summary.role})`,
           "",
           "본 자료는 EXPEER 플랫폼에 기록된 거래 내역의 사본입니다.",
-          "EXPEER는 P2P 중개 서비스로 분쟁을 직접 중재하지 않으며,",
-          "본 자료는 당사자 간 협의 또는 관련 당국 신고 시 활용하시기 바랍니다.",
+          "경찰 신고 또는 은행 제출이 필요한 경우 참고 자료로 활용할 수 있습니다.",
+          "EXPEER는 현금과 코인을 보관하지 않는 비수탁 P2P 중개 서비스입니다.",
           "",
           "포함 파일:",
           "- POLICY.txt          : EXPEER 분쟁 처리 정책 전문",
@@ -218,7 +218,7 @@ export const buildEvidencePackage = createServerFn({ method: "POST" })
     const base64 = btoa(binary);
 
     return {
-      filename: `expeer-evidence-${order.id.slice(0, 8)}-${Date.now()}.zip`,
+      filename: `expeer-transaction-records-${order.id.slice(0, 8)}-${Date.now()}.zip`,
       contentBase64: base64,
       sizeBytes: zipBytes.byteLength,
       counts: summary.counts,

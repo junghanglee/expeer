@@ -2,13 +2,14 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { AppHeader } from "@/components/espeer/AppHeader";
 import { Section } from "@/components/espeer/Section";
-import { ShieldAlert, Info } from "lucide-react";
+import { ShieldAlert, Info, Download } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEvidencePackage } from "@/hooks/useEvidencePackage";
-import { Download } from "lucide-react";
+import { useOrder } from "@/hooks/useOrders";
+import { CounterpartyTrustCard } from "@/components/espeer/CounterpartyTrustCard";
 
 const REASONS = [
   "송금했으나 판매자가 확인하지 않음",
@@ -28,11 +29,19 @@ export const Route = createFileRoute("/app/order/$orderId/dispute")({
 function Dispute() {
   const { orderId } = Route.useParams();
   const { user } = useAuth();
+  const { order } = useOrder(orderId);
   const navigate = useNavigate();
   const [reason, setReason] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { download, loading: dlLoading } = useEvidencePackage();
+  const counterpartId = order
+    ? user?.id === order.buyer_id
+      ? order.seller_id
+      : user?.id === order.seller_id
+        ? order.buyer_id
+        : undefined
+    : undefined;
 
   const submit = async () => {
     if (!reason || !user) return;
@@ -78,16 +87,15 @@ function Dispute() {
           <div className="flex items-start gap-2">
             <Info className="h-5 w-5 shrink-0 text-primary" />
             <div className="text-[12px] leading-relaxed text-foreground">
-              <b>EXPEER는 중개 플랫폼으로 분쟁을 직접 중재하지 않습니다.</b>
-              <br />
-              신청 시 거래는 보류되고 채팅·증빙·온체인 내역이 보존됩니다.
-              <br />
-              증빙 자료를 다운로드하여 <b>당사자 간 협의</b> 또는 <b>관련 당국</b>을 통해 해결해
-              주세요.
+              <b>필요한 경우에만 자료를 보존하고 내려받으세요.</b>
+              <br />이 자료는 경찰 신고 또는 은행 제출용으로 활용할 수 있는 거래 기록 사본입니다.
+              EXPEER는 현금·코인을 보관하지 않는 비수탁 P2P 중개 서비스입니다.
             </div>
           </div>
         </div>
       </Section>
+
+      <CounterpartyTrustCard userId={counterpartId} title="거래상대 확인" />
 
       <Section>
         <div className="rounded-2xl border border-destructive bg-destructive-soft p-4">
@@ -100,18 +108,18 @@ function Dispute() {
         </div>
       </Section>
 
-      <Section title="증빙 자료 다운로드">
+      <Section title="제출용 거래 자료">
         <button
           onClick={() => download(orderId)}
           disabled={dlLoading}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary-soft px-4 py-3.5 text-[13px] font-bold text-primary disabled:opacity-50"
         >
           <Download className="h-4 w-4" />
-          {dlLoading ? "패키지 생성 중..." : "거래 증빙 패키지 (.zip) 다운로드"}
+          {dlLoading ? "자료 생성 중..." : "제출용 거래 자료 (.zip) 다운로드"}
         </button>
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-          채팅 로그, 송금 증빙, 주문 상세, 온체인 이체 내역이 포함됩니다. 개인정보는 마스킹되어
-          발급됩니다.
+          구매내역, 채팅내역, 송금 증빙, 토큰 전송내역, 온체인 에스크로 기록이 포함됩니다.
+          개인정보는 필요한 범위에서 마스킹됩니다.
         </p>
       </Section>
 
