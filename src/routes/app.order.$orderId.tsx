@@ -50,6 +50,7 @@ export const Route = createFileRoute("/app/order/$orderId")({
 });
 
 interface BankInfo {
+  role: "seller" | "buyer";
   bank_name: string;
   account_number: string;
   account_holder: string;
@@ -63,6 +64,7 @@ function OrderDetail() {
   const { order, loading, refresh } = useOrder(orderId);
   const [sellerBank, setSellerBank] = useState<BankInfo | null>(null);
   const [buyerBank, setBuyerBank] = useState<BankInfo | null>(null);
+  const [bankLoadError, setBankLoadError] = useState(false);
   const [buyerWalletAddress, setBuyerWalletAddress] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // CRITICAL: hooks must be called unconditionally (before any early return)
@@ -71,22 +73,21 @@ function OrderDetail() {
   useEffect(() => {
     (async () => {
       if (!order) return;
-      if (order.seller_bank_account_id) {
-        const { data } = await supabase
-          .from("bank_accounts")
-          .select("bank_name,account_number,account_holder")
-          .eq("id", order.seller_bank_account_id)
-          .maybeSingle();
-        setSellerBank(data ?? null);
+      setSellerBank(null);
+      setBuyerBank(null);
+      setBankLoadError(false);
+      setBuyerWalletAddress(null);
+
+      const { data: bankRows, error: bankError } = await supabase.rpc("get_order_bank_accounts", {
+        _order_id: order.id,
+      });
+      if (bankError) {
+        setBankLoadError(true);
+      } else {
+        setSellerBank(bankRows?.find((row) => row.role === "seller") ?? null);
+        setBuyerBank(bankRows?.find((row) => row.role === "buyer") ?? null);
       }
-      if (order.buyer_bank_account_id) {
-        const { data } = await supabase
-          .from("bank_accounts")
-          .select("bank_name,account_number,account_holder")
-          .eq("id", order.buyer_bank_account_id)
-          .maybeSingle();
-        setBuyerBank(data ?? null);
-      }
+
       if (order.buyer_wallet_id) {
         const { data } = await supabase
           .from("wallets")
@@ -263,6 +264,16 @@ function OrderDetail() {
               ({buyerBank.account_holder}) 계좌에서 송금해 주세요.
             </div>
           )}
+        </Section>
+      )}
+
+      {isBuyer && (status === "created" || status === "info_shared") && !sellerBank && (
+        <Section title="이 계좌로 송금해 주세요">
+          <div className="rounded-2xl border border-warning/40 bg-warning-soft px-4 py-3 text-[12px] font-semibold leading-relaxed text-warning-foreground">
+            {bankLoadError
+              ? "판매자 계좌 조회 RPC가 아직 Supabase에 적용되지 않았어요. manual-fixes SQL을 적용하면 계좌번호가 표시됩니다."
+              : "판매자 계좌 정보를 불러오는 중입니다."}
+          </div>
         </Section>
       )}
 

@@ -754,6 +754,15 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_order_bank_accounts: {
+        Args: { _order_id: string };
+        Returns: {
+          role: "seller" | "buyer";
+          bank_name: string;
+          account_number: string;
+          account_holder: string;
+        }[];
+      };
       get_primary_bank_account_id: {
         Args: { _user_id: string };
         Returns: string;

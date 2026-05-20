@@ -118,4 +118,10 @@ test("buyer can open market offer and create order chat", async ({ page }) => {
   expect(messageError).toBeNull();
   expect(messages?.some((m) => m.metadata?.event === "order_created")).toBe(true);
   await expect(page.getByText("거래방이 생성되었습니다")).toBeVisible();
+
+  await page.goto(`/app/order/${orderId}`);
+  await expect(page.getByText("이 계좌로 송금해 주세요")).toBeVisible();
+  await expect(
+    page.getByText(/토스뱅크|판매자 계좌 조회 RPC가 아직 Supabase에 적용되지 않았어요/),
+  ).toBeVisible();
 });
