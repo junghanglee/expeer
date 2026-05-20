@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { Users, TrendingUp, TrendingDown, Lock, X } from "lucide-react";
-import { MOCK_PAIR_STATS, fmtNum, fmtKrw, type SwapPair, type SwapRequest } from "@/data/mock";
+import { fmtNum, fmtKrw, makePairStats, type SwapPair, type SwapRequest } from "@/data/format";
 
 /**
  * P2P 시장 현황 — 활성 판매자/구매자 인원 + 가격대별 오퍼 분포.
- * `offers`는 DB+mock이 합쳐진 실제 오퍼 목록을 받아서 호가/참여자 수를 계산한다.
+ * `offers`는 Supabase에서 불러온 실제 오퍼 목록을 받아서 호가/참여자 수를 계산한다.
  */
 export function DepthMiniChart({ pair, offers }: { pair: SwapPair; offers: SwapRequest[] }) {
-  const stats = MOCK_PAIR_STATS[pair];
+  const stats = makePairStats(pair, offers, pair.endsWith("/KRW") ? 1380 : 1);
   const base = pair.split("/")[0];
   const quote = pair.split("/")[1];
   const up = stats.change24h >= 0;

@@ -1,9 +1,29 @@
 import { Link } from "@tanstack/react-router";
-import { type Ad, fmtKrw, fmtNum } from "@/data/mock";
+import { fmtKrw, fmtNum, type CryptoAsset, type VerificationLevel, type Bank } from "@/data/format";
 import { VerificationBadge } from "./Badges";
 import { Star, Zap } from "lucide-react";
 
-export function AdCard({ ad }: { ad: Ad }) {
+export interface AdCardSeller {
+  name: string;
+  level: VerificationLevel;
+  rating: number;
+  completionRate: number;
+  avgReleaseSec: number;
+}
+
+export interface AdCardAd {
+  id: string;
+  seller: AdCardSeller;
+  unitPrice: number;
+  asset: CryptoAsset;
+  available: number;
+  minKrw: number;
+  maxKrw: number;
+  chain: string;
+  banks: Bank[];
+}
+
+export function AdCard({ ad }: { ad: AdCardAd }) {
   return (
     <Link
       to="/app/ads/$adId"

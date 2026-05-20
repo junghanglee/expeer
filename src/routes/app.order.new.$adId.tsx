@@ -130,8 +130,8 @@ function NewOrder() {
         expires_at: expiresAt,
         status: "created",
       });
-      toast.success("주문이 생성되었습니다");
-      navigate({ to: "/app/order/$orderId", params: { orderId: order.id } });
+      toast.success("주문이 생성되었습니다. 거래방으로 이동합니다.");
+      navigate({ to: "/app/order/$orderId/chat", params: { orderId: order.id } });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "주문 생성 실패");
     } finally {

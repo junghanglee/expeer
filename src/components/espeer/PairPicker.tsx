@@ -10,7 +10,7 @@ import {
   type CryptoAsset,
   type SwapPair,
   type FiatCode,
-} from "@/data/mock";
+} from "@/data/format";
 
 /* ============================================================
  * P2P 환전소용 페어 선택기 (바이낸스 P2P 스타일)
@@ -228,7 +228,7 @@ function AssetSheet({
   const term = q.trim().toUpperCase();
 
   // market 모드는 KRW/USD 페어가 있는 자산만 노출
-  const list = (arr: CryptoAsset[]) =>
+  const list = (arr: readonly CryptoAsset[]) =>
     arr.filter((a) => {
       if (excluded.includes(a)) return false;
       if (mode === "market" && SUPPORTED[a].length === 0) return false;

@@ -8,7 +8,7 @@ import {
   ChevronDown,
   FileImage,
 } from "lucide-react";
-import type { Bank } from "@/data/mock";
+import type { Bank } from "@/data/format";
 import type { BankAccountEntry } from "./BankAccountField";
 
 /**

@@ -114,6 +114,18 @@ export async function createOrder(input: TablesInsert<"orders">) {
 
   const { data: order, error } = await supabase.from("orders").insert(payload).select().single();
   if (error) throw error;
+
+  // 주문 생성 직후 거래방에 첫 안내 메시지를 남겨 채팅방 진입 시 빈 화면이 되지 않게 한다.
+  // 현재 RLS는 sender_id = auth.uid() 메시지만 허용하므로 주문 생성자인 buyer 메시지로 기록한다.
+  const { error: messageError } = await supabase.from("messages").insert({
+    order_id: order.id,
+    sender_id: order.buyer_id,
+    type: "text",
+    content: "거래방이 생성되었습니다. 상대방 확인 후 안내에 따라 거래를 진행하겠습니다.",
+    metadata: { event: "order_created" },
+  });
+  if (messageError) throw messageError;
+
   // Decrease ad available_amount
   const { data: ad } = await supabase
     .from("ads")

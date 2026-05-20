@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { DepthMiniChart } from "@/components/espeer/DepthMiniChart";
@@ -15,24 +15,17 @@ import {
   CheckCircle2,
   CircleDot,
   Plus,
-  Banknote,
-  Coins,
   Sparkles,
 } from "lucide-react";
 import {
-  MOCK_SWAP_DONE,
-  MOCK_PAIR_STATS,
-  MOCK_FILL_GUIDE,
   fmtNum,
   fmtKrw,
+  makePairStats,
   type SwapPair,
   type SwapSide,
   type SwapRequest,
-} from "@/data/mock";
-import { saveSwapRequest, useSwapRequests } from "@/data/offerStore";
-import { useAuth } from "@/lib/auth";
-import { toast } from "sonner";
-import { NumberStepper } from "@/components/espeer/NumberStepper";
+} from "@/data/format";
+import { useSwapRequests } from "@/data/offerStore";
 
 export const Route = createFileRoute("/app/market")({
   head: () => ({
@@ -58,11 +51,11 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "volume", label: "거래량순" },
 ];
 
-// createdAt "HH:MM:SS" → 비교 가능한 number
-const tsToNum = (s: string) => {
-  const [h = "0", m = "0", sec = "0"] = s.split(":");
-  return Number(h) * 3600 + Number(m) * 60 + Number(sec);
-};
+// DB에 오퍼가 없을 때 시세 기준값으로만 사용한다.
+function fallbackMidPrice(pair: SwapPair) {
+  if (pair === "USDT/KRW" || pair === "USDC/KRW") return 1380;
+  return 1;
+}
 
 // 프로필 기본 페어 — 실제 서비스에서는 user 컨텍스트, 여기선 localStorage 시뮬
 function readDefaultPair(): SwapPair {
@@ -75,10 +68,7 @@ function MarketPage() {
   const [pair, setPair] = useState<SwapPair>("USDT/KRW");
   const [tab, setTab] = useState<Tab>("buy");
   const [sort, setSort] = useState<SortKey>("best");
-  const [showTicket, setShowTicket] = useState(false);
-  const [defaultSide, setDefaultSide] = useState<SwapSide>("buy");
 
-  // 전역 오퍼 스토어 — 사용자가 등록한 오퍼도 여기에 합쳐져서 모든 탭에 노출됨
   const allOffers = useSwapRequests();
 
   // hydrate default pair from profile
@@ -86,20 +76,19 @@ function MarketPage() {
     setPair(readDefaultPair());
   }, []);
 
-  const stats = MOCK_PAIR_STATS[pair];
   const base = pair.split("/")[0];
   const fiat = pair.split("/")[1] as "KRW" | "USD";
-  // 글로벌 시세에서 라이브 가격 가져와 mid에 적용 (없으면 mock fallback)
+  // 글로벌 시세에서 라이브 가격을 가져오고, 실패 시 DB 오퍼 기반 기준가를 사용한다.
   const live = useLivePrices([base]);
   const liveQuote = live.quotes[base];
   const livePrice = liveQuote ? (fiat === "KRW" ? liveQuote.priceKrw : liveQuote.priceUsd) : null;
-  const mid = livePrice ?? stats.midPrice;
+  const mid = livePrice ?? makePairStats(pair, allOffers, fallbackMidPrice(pair)).midPrice;
 
   // 정렬 적용 함수: best는 side에 따라 다름
   const applySort = (arr: SwapRequest[], side: SwapSide) => {
     const out = [...arr];
     if (sort === "newest") {
-      out.sort((a, b) => tsToNum(b.createdAt) - tsToNum(a.createdAt));
+      out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else if (sort === "volume") {
       out.sort((a, b) => b.amountToken - a.amountToken);
     } else {
@@ -133,29 +122,10 @@ function MarketPage() {
     [pair, allOffers],
   );
 
-  const doneList = useMemo(() => MOCK_SWAP_DONE.filter((s) => s.pair === pair), [pair]);
-
-  const { user } = useAuth();
-  const handleSubmit = async (req: SwapRequest) => {
-    if (!user) {
-      toast.error("로그인 후 오퍼를 등록할 수 있어요");
-      return;
-    }
-    try {
-      await saveSwapRequest(user.id, req);
-      toast.success("오퍼가 등록되었습니다");
-      setShowTicket(false);
-      setTab("myorders");
-    } catch (e) {
-      console.error("[market.register]", e);
-      toast.error(e instanceof Error ? e.message : "등록 실패");
-    }
-  };
-
-  const openTicket = (side: SwapSide) => {
-    setDefaultSide(side);
-    setShowTicket(true);
-  };
+  const doneList = useMemo(
+    () => allOffers.filter((s) => s.pair === pair && s.status === "COMPLETED"),
+    [pair, allOffers],
+  );
 
   return (
     <PhoneShell>
@@ -192,20 +162,22 @@ function MarketPage() {
 
       {/* Quick action buttons */}
       <div className="mx-4 mt-3 grid grid-cols-2 gap-2">
-        <button
-          onClick={() => openTicket("buy")}
+        <Link
+          to="/app/selling/new"
+          search={{ side: "buy", asset: base }}
           className="card-lift flex items-center justify-center gap-2 rounded-2xl bg-success px-3 py-3 text-success-foreground"
         >
           <Plus className="h-4 w-4 shrink-0" />
-          <span className="truncate text-[13px] font-extrabold">{base} 구매 등록</span>
-        </button>
-        <button
-          onClick={() => openTicket("sell")}
+          <span className="truncate text-[13px] font-extrabold">{base} 구매 오퍼 등록</span>
+        </Link>
+        <Link
+          to="/app/selling/new"
+          search={{ side: "sell", asset: base }}
           className="card-lift flex items-center justify-center gap-2 rounded-2xl bg-destructive px-3 py-3 text-destructive-foreground"
         >
           <Plus className="h-4 w-4 shrink-0" />
-          <span className="truncate text-[13px] font-extrabold">{base} 판매 등록</span>
-        </button>
+          <span className="truncate text-[13px] font-extrabold">{base} 판매 오퍼 등록</span>
+        </Link>
       </div>
 
       {/* Tabs */}
@@ -318,16 +290,6 @@ function MarketPage() {
       )}
 
       <div className="h-6" />
-
-      {/* Bottom sheet: order ticket */}
-      {showTicket && (
-        <OrderTicketSheet
-          pair={pair}
-          defaultSide={defaultSide}
-          onClose={() => setShowTicket(false)}
-          onSubmit={handleSubmit}
-        />
-      )}
     </PhoneShell>
   );
 }
@@ -384,6 +346,7 @@ function OfferCard({
   mode: OfferMode;
   midPrice: number;
 }) {
+  const navigate = useNavigate();
   const isSell = req.side === "sell";
   const base = req.pair.split("/")[0];
   const quote = req.pair.split("/")[1];
@@ -394,7 +357,7 @@ function OfferCard({
   const [pick, setPick] = useState<number>(remain);
   const [open, setOpen] = useState(false);
 
-  const unit = req.isMarket ? MOCK_PAIR_STATS[req.pair].midPrice : req.unitPrice;
+  const unit = req.isMarket ? midPrice : req.unitPrice;
   const totalQuote = unit * pick;
 
   // 시세 대비 프리미엄(%) — 시장가는 표시 생략
@@ -589,6 +552,7 @@ function OfferCard({
                   취소
                 </button>
                 <button
+                  onClick={() => navigate({ to: "/app/order/new/$adId", params: { adId: req.id } })}
                   className={`flex-2 flex-1 rounded-xl py-2 text-[12px] font-extrabold ${actionTone}`}
                 >
                   {pick === remain ? "전체" : "부분"}{" "}
@@ -664,235 +628,5 @@ function EmptyMine() {
         상단의 매수/매도 버튼으로 주문을 올려보세요.
       </div>
     </div>
-  );
-}
-
-/* ============== Order ticket bottom sheet ============== */
-function OrderTicketSheet({
-  pair,
-  defaultSide,
-  onClose,
-  onSubmit,
-}: {
-  pair: SwapPair;
-  defaultSide: SwapSide;
-  onClose: () => void;
-  onSubmit: (req: SwapRequest) => void;
-}) {
-  const stats = MOCK_PAIR_STATS[pair];
-  const [side, setSide] = useState<SwapSide>(defaultSide);
-  const [isMarket, setIsMarket] = useState(false);
-  const [price, setPrice] = useState<string>(String(stats.midPrice));
-  const [size, setSize] = useState<string>("");
-
-  const isBuy = side === "buy";
-  const numericPrice = isMarket ? stats.midPrice : Number(price) || 0;
-  const numericSize = Number(size) || 0;
-  const total = numericPrice * numericSize;
-
-  // 가격 차이에 따른 예상 체결 시간 가이드
-  const guide = useMemo(() => {
-    if (isMarket) return MOCK_FILL_GUIDE[0];
-    if (!numericPrice) return MOCK_FILL_GUIDE[2];
-    const diff = numericPrice - stats.midPrice;
-    const norm = isBuy ? diff : -diff;
-    if (norm <= -2) return MOCK_FILL_GUIDE[0];
-    if (norm <= -0.5) return MOCK_FILL_GUIDE[1];
-    if (norm <= 0.5) return MOCK_FILL_GUIDE[2];
-    if (norm <= 2) return MOCK_FILL_GUIDE[3];
-    return MOCK_FILL_GUIDE[4];
-  }, [numericPrice, isMarket, isBuy, stats.midPrice]);
-
-  const submit = () => {
-    if (!numericSize) return;
-    const now = new Date();
-    const ts = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(
-      2,
-      "0",
-    )}:${String(now.getSeconds()).padStart(2, "0")}`;
-    onSubmit({
-      id: `sw_my_${Date.now()}`,
-      pair,
-      side,
-      unitPrice: isMarket ? 0 : numericPrice,
-      isMarket,
-      amountToken: numericSize,
-      filledToken: 0,
-      ownerName: "김토스 (나)",
-      ownerIsMerchant: false,
-      ownerLevel: 3,
-      banks: ["토스뱅크"],
-      status: "OPEN",
-      createdAt: ts,
-      expectedFillSec: guide.avgSec,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center">
-      <button
-        aria-label="close"
-        onClick={onClose}
-        className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
-      />
-      <div className="relative w-full max-w-[480px] max-h-[90vh] overflow-y-auto rounded-t-3xl bg-background p-5 pb-8 shadow-2xl">
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" />
-        <div className="flex items-center justify-between">
-          <div className="text-[16px] font-extrabold text-foreground">
-            주문 등록 · {isBuy ? "매수" : "매도"}
-          </div>
-          <span className="text-[11px] font-semibold text-muted-foreground">{pair}</span>
-        </div>
-
-        {/* Side toggle */}
-        <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-surface p-1">
-          <button
-            onClick={() => setSide("buy")}
-            className={`rounded-lg py-2 text-[13px] font-bold transition-colors ${
-              isBuy ? "bg-success text-success-foreground" : "text-muted-foreground"
-            }`}
-          >
-            <Coins className="mr-1 inline h-3.5 w-3.5" /> 매수
-          </button>
-          <button
-            onClick={() => setSide("sell")}
-            className={`rounded-lg py-2 text-[13px] font-bold transition-colors ${
-              !isBuy ? "bg-destructive text-destructive-foreground" : "text-muted-foreground"
-            }`}
-          >
-            <Banknote className="mr-1 inline h-3.5 w-3.5" /> 매도
-          </button>
-        </div>
-
-        {/* Order type */}
-        <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-surface p-1">
-          <button
-            onClick={() => setIsMarket(false)}
-            className={`rounded-lg py-1.5 text-[12px] font-bold ${
-              !isMarket ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-            }`}
-          >
-            지정가
-          </button>
-          <button
-            onClick={() => setIsMarket(true)}
-            className={`rounded-lg py-1.5 text-[12px] font-bold ${
-              isMarket ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-            }`}
-          >
-            <Zap className="mr-1 inline h-3 w-3" /> 시장가 (즉시 매칭)
-          </button>
-        </div>
-
-        {/* Price */}
-        <div className="mt-3">
-          <div className="text-[11px] font-semibold text-muted-foreground">희망 단가</div>
-          <div className="mt-1">
-            {isMarket ? (
-              <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-3 py-2.5 text-[13px] font-semibold text-muted-foreground">
-                <span>최우선 매칭 가격으로 체결</span>
-                <span className="text-[11px] font-bold">{pair.split("/")[1]}</span>
-              </div>
-            ) : (
-              <NumberStepper
-                value={price}
-                onChange={setPrice}
-                step={1}
-                min={0}
-                unit={pair.split("/")[1]}
-                ariaLabel="희망 단가"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Size */}
-        <Field
-          label="수량"
-          unit={pair.split("/")[0]}
-          value={size}
-          onChange={setSize}
-          placeholder="0"
-        />
-
-        {/* Total */}
-        <div className="mt-3 flex items-center justify-between rounded-xl bg-surface px-3 py-2.5">
-          <span className="text-[12px] font-semibold text-muted-foreground">총 환전 금액</span>
-          <span className="num-display text-[16px] text-foreground">
-            {total > 0 ? fmtKrw(Math.round(total)) : "0원"}
-          </span>
-        </div>
-
-        {/* Zero-Custody */}
-        <ul className="mt-3 space-y-1 text-[11px] text-foreground/70">
-          <Check>플랫폼은 자산을 보관하지 않음 · 컨트랙트가 락업</Check>
-          <Check>매칭 시 정확한 수량만 온체인 락업</Check>
-          <Check>릴리즈는 본인 P2P 서명으로만 가능</Check>
-        </ul>
-
-        <button
-          onClick={submit}
-          disabled={!numericSize}
-          className={`mt-4 w-full rounded-2xl py-3.5 text-[15px] font-extrabold transition-opacity hover:opacity-95 disabled:opacity-50 ${
-            isBuy
-              ? "bg-success text-success-foreground"
-              : "bg-destructive text-destructive-foreground"
-          }`}
-        >
-          {isBuy ? "매수 주문 등록" : "매도 주문 등록"}
-        </button>
-        <div className="mt-2 flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
-          <Info className="h-3 w-3" /> 등록 즉시 '내 주문' 탭에 표시되고 매칭을 기다립니다
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  unit,
-  value,
-  onChange,
-  placeholder,
-  disabled,
-}: {
-  label: string;
-  unit: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="mt-3">
-      <div className="text-[11px] font-semibold text-muted-foreground">{label}</div>
-      <div
-        className={`mt-1 flex items-center gap-2 rounded-xl border px-3 py-2.5 ${
-          disabled
-            ? "border-border bg-surface"
-            : "border-border bg-card focus-within:border-primary"
-        }`}
-      >
-        <input
-          inputMode="decimal"
-          value={value}
-          disabled={disabled}
-          placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          className="num-display w-full bg-transparent text-[16px] text-foreground outline-none disabled:text-muted-foreground"
-        />
-        <span className="text-[11px] font-bold text-muted-foreground">{unit}</span>
-      </div>
-    </div>
-  );
-}
-
-function Check({ children }: { children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-1.5">
-      <ShieldCheck className="mt-0.5 h-3 w-3 shrink-0 text-success" />
-      <span>{children}</span>
-    </li>
   );
 }

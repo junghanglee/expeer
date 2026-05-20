@@ -1,4 +1,4 @@
-import type { RiskTier, VerificationLevel } from "@/data/mock";
+import type { RiskTier, VerificationLevel } from "@/data/format";
 import { ShieldCheck, BadgeCheck, AlertTriangle } from "lucide-react";
 
 export function RiskBadge({ tier }: { tier: RiskTier }) {

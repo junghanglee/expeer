@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { fmtKrw, fmtNum } from "@/data/mock";
+import { fmtKrw, fmtNum } from "@/data/format";
 import { useAuth } from "@/lib/auth";
 import { useAdminKpi, useRecentDisputes, useRecentOrders } from "@/hooks/useAdminStats";
 import {

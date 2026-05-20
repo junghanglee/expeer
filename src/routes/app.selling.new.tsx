@@ -1,17 +1,23 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { Section } from "@/components/espeer/Section";
 import { NumberStepper } from "@/components/espeer/NumberStepper";
 import { ArrowLeft, Plus, ShieldCheck, Lock, Loader2 } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useWallets } from "@/hooks/useWallets";
 import { createOffer } from "@/hooks/useOffers";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const searchSchema = z.object({
+  side: z.enum(["sell", "buy"]).optional(),
+  asset: z.string().optional(),
+});
 
 export const Route = createFileRoute("/app/selling/new")({
+  validateSearch: searchSchema,
   head: () => ({ meta: [{ title: "오퍼 등록 — EXPEER" }] }),
   component: NewOffer,
 });
@@ -32,12 +38,16 @@ const PAYMENT_METHODS = ["bank_transfer", "toss", "kakao_pay"];
 
 function NewOffer() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const { user } = useAuth();
   const { accounts } = useBankAccounts();
   const { wallets } = useWallets();
 
-  const [side, setSide] = useState<"sell" | "buy">("sell");
-  const [asset, setAsset] = useState<string>("USDC");
+  const initialAsset = ASSETS.includes(search.asset as (typeof ASSETS)[number])
+    ? (search.asset as (typeof ASSETS)[number])
+    : "USDC";
+  const [side, setSide] = useState<"sell" | "buy">(search.side ?? "sell");
+  const [asset, setAsset] = useState<string>(initialAsset);
   const [network, setNetwork] = useState<string>("Base Sepolia");
   const [price, setPrice] = useState("1380");
   const [total, setTotal] = useState("1000");
@@ -52,7 +62,13 @@ function NewOffer() {
     setNetwork(NETWORKS[asset][0]);
   }, [asset]);
 
-  const assetWallets = useMemo(() => wallets.filter((w) => w.asset === asset), [wallets, asset]);
+  const assetWallets = useMemo(
+    () => wallets.filter((w) => w.asset === asset && w.network === network),
+    [wallets, asset, network],
+  );
+  const primaryBank = accounts[0];
+  const primaryWallet = assetWallets[0];
+  const totalFiat = Number(total) * Number(price);
 
   const valid =
     Number(price) > 0 &&
@@ -70,7 +86,8 @@ function NewOffer() {
     }
     setSubmitting(true);
     try {
-      await createOffer(user.id, {
+      const offer = await createOffer(user.id, {
+        kind: "fiat",
         side,
         asset,
         network,
@@ -83,8 +100,8 @@ function NewOffer() {
         terms: terms.trim() || null,
         status: "active",
       });
-      toast.success("오퍼가 등록되었습니다");
-      navigate({ to: "/app/selling" });
+      toast.success("오퍼가 등록되었습니다. 마켓 상세로 이동합니다.");
+      navigate({ to: "/app/ads/$adId", params: { adId: offer.id } });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "등록 실패";
       toast.error(msg);
@@ -108,7 +125,9 @@ function NewOffer() {
           </Link>
           <div className="leading-tight">
             <div className="text-[15px] font-extrabold text-foreground">오퍼 등록</div>
-            <div className="text-[10px] font-semibold text-muted-foreground">매칭 시 자동 락업</div>
+            <div className="text-[10px] font-semibold text-muted-foreground">
+              {side === "sell" ? "내 코인을 팔 판매 오퍼" : "내가 코인을 살 구매 오퍼"}
+            </div>
           </div>
         </div>
       </header>
@@ -116,8 +135,8 @@ function NewOffer() {
       <div className="mx-4 mt-3 flex items-start gap-2 rounded-xl border border-primary-soft bg-primary-soft/60 p-3">
         <Lock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <div className="text-[11px] leading-relaxed text-foreground/80">
-          오퍼 등록 시점에는 자산이 이동하지 않아요. 매수자가 매칭되면 <b>스마트 컨트랙트</b>가
-          정확한 수량만 일시 락업합니다.
+          <b>{side === "sell" ? "판매 오퍼" : "구매 오퍼"}</b>를 등록합니다. 오퍼 등록 시점에는
+          자산이 이동하지 않고, 주문이 매칭되면 거래방에서 계좌·지갑 확인 후 단계별로 진행합니다.
         </div>
       </div>
 
@@ -131,7 +150,10 @@ function NewOffer() {
                 : "bg-surface text-muted-foreground"
             }`}
           >
-            판매 (코인 → 원화)
+            판매 오퍼 등록
+            <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
+              다른 사용자가 코인을 구매
+            </span>
           </button>
           <button
             onClick={() => setSide("buy")}
@@ -141,7 +163,10 @@ function NewOffer() {
                 : "bg-surface text-muted-foreground"
             }`}
           >
-            구매 (원화 → 코인)
+            구매 오퍼 등록
+            <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
+              다른 사용자가 코인을 판매
+            </span>
           </button>
         </div>
       </Section>
@@ -232,9 +257,38 @@ function NewOffer() {
         />
       </Section>
 
+      <Section title="등록 요약">
+        <div className="rounded-2xl border border-border bg-card px-3.5 py-3 text-[12px]">
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-muted-foreground">오퍼 방향</span>
+            <b className={side === "sell" ? "text-destructive" : "text-success"}>
+              {side === "sell" ? "판매 오퍼" : "구매 오퍼"}
+            </b>
+          </div>
+          <div className="h-px bg-border" />
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-muted-foreground">총 거래 가능 금액</span>
+            <b className="num-tnum text-foreground">{totalFiat.toLocaleString("ko-KR")} KRW</b>
+          </div>
+          <div className="h-px bg-border" />
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-muted-foreground">등록 기준</span>
+            <b className="text-foreground">
+              {side === "sell"
+                ? primaryWallet
+                  ? `${primaryWallet.label || asset + " 지갑"} 확인됨`
+                  : `${asset}/${network} 지갑 필요`
+                : primaryBank
+                  ? `${primaryBank.bank_name} 계좌 확인됨`
+                  : "계좌 등록 필요"}
+            </b>
+          </div>
+        </div>
+      </Section>
+
       {side === "sell" && assetWallets.length === 0 && (
         <div className="mx-4 mt-2 rounded-xl bg-warning-soft p-3 text-[11px] text-warning-foreground">
-          {asset} 지갑이 등록되어 있지 않습니다.{" "}
+          {asset}/{network} 지갑이 등록되어 있지 않습니다.{" "}
           <Link to="/onboarding/wallet" className="font-bold underline">
             지갑 등록하기
           </Link>
@@ -269,7 +323,7 @@ function NewOffer() {
           className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-primary py-3.5 text-[15px] font-extrabold text-primary-foreground disabled:opacity-50"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          오퍼 등록하기
+          {side === "sell" ? "판매 오퍼 등록하기" : "구매 오퍼 등록하기"}
         </button>
       </div>
     </PhoneShell>

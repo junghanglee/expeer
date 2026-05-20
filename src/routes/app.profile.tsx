@@ -4,26 +4,17 @@ import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/hooks/useProfile";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useWallets } from "@/hooks/useWallets";
-import { useOffers } from "@/hooks/useOffers";
 import { toast } from "sonner";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { Section, InfoRow } from "@/components/espeer/Section";
 import { BigNumber } from "@/components/espeer/BigNumber";
 import { VerificationBadge } from "@/components/espeer/Badges";
-import { IdentityVerifyCard } from "@/components/espeer/IdentityVerifyCard";
 import { WalletAddressField, type SavedAddress } from "@/components/espeer/WalletAddressField";
 import { WalletLinkCard, type LinkedWallet } from "@/components/espeer/WalletLinkCard";
 import { BankAccountStepForm } from "@/components/espeer/BankAccountStepForm";
 import type { BankAccountEntry } from "@/components/espeer/BankAccountField";
 import { useUserReviews, type Review } from "@/hooks/useReviews";
-import {
-  MOCK_ME,
-  MOCK_SAVED_ADDRESSES,
-  MOCK_IDENTITY,
-  fmtNum,
-  type SwapPair,
-  type CryptoAsset,
-} from "@/data/mock";
+import { fmtNum, type SwapPair, type CryptoAsset } from "@/data/format";
 import {
   ChevronRight,
   Bell,
@@ -49,30 +40,21 @@ const PAIRS: SwapPair[] = ["USDT/KRW", "USDC/KRW"];
 function Profile() {
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
-  const { accounts: bankAccounts, add: addBank, remove: removeBank } = useBankAccounts();
+  const { accounts: bankAccounts, add: addBank } = useBankAccounts();
   const { wallets, add: addWallet } = useWallets();
-  const { offers: myOffers } = useOffers({ mineOnly: true });
   const navigate = useNavigate();
   const [pair, setPair] = useState<SwapPair>("USDT/KRW");
-  const [identity] = useState<{
-    idUploaded: boolean;
-    idHolderName?: string;
-    selfieMatched: boolean;
-    smsVerified: boolean;
-  }>({
-    idUploaded: MOCK_IDENTITY.idUploaded,
-    idHolderName: MOCK_IDENTITY.idHolderName,
-    selfieMatched: MOCK_IDENTITY.selfieMatched,
-    smsVerified: MOCK_IDENTITY.smsVerified,
-  });
-  const [savedAddrs, setSavedAddrs] = useState<SavedAddress[]>(
-    MOCK_SAVED_ADDRESSES.map((s) => ({
-      id: s.id,
-      asset: s.asset as CryptoAsset,
-      label: s.label,
-      address: s.address,
-    })),
-  );
+  const kycLevel = Math.min(5, Math.max(0, profile?.kyc_level ?? 0)) as 0 | 1 | 2 | 3 | 4 | 5;
+  const displayName = profile?.real_name ?? profile?.nickname ?? "사용자";
+  const completionRate =
+    profile?.kyc_status === "approved"
+      ? 100
+      : profile?.kyc_status === "pending"
+        ? 70
+        : kycLevel > 0
+          ? 40
+          : 0;
+  const [savedAddrs, setSavedAddrs] = useState<SavedAddress[]>([]);
   const [newAddrAsset, setNewAddrAsset] = useState<CryptoAsset>("USDT");
   const [newAddr, setNewAddr] = useState("");
 
@@ -134,7 +116,7 @@ function Profile() {
               <span className="text-[16px] font-bold text-foreground">
                 {profile?.nickname ?? "사용자"}
               </span>
-              <VerificationBadge level={MOCK_ME.level} />
+              <VerificationBadge level={kycLevel} />
             </div>
             <div className="text-[12px] text-muted-foreground">
               {profile?.email ?? user?.email ?? ""}
@@ -152,7 +134,7 @@ function Profile() {
             }
           />
           <Stat label="총 거래" value={`${profile?.trade_count ?? 0}건`} />
-          <Stat label="완료율" value={`${MOCK_ME.completionRate}%`} />
+          <Stat label="완료율" value={`${completionRate}%`} />
         </div>
       </Section>
 
@@ -161,19 +143,21 @@ function Profile() {
       <Section title="검증 레벨">
         <div className="rounded-2xl border border-border bg-card p-4">
           <div className="flex items-end justify-between">
-            <BigNumber value={`Lv.${MOCK_ME.level}`} unit="/ 5" size="lg" tone="primary" />
+            <BigNumber value={`Lv.${kycLevel}`} unit="/ 5" size="lg" tone="primary" />
             <span className="text-[12px] font-semibold text-muted-foreground">
-              머천트까지 2단계
+              {kycLevel >= 5 ? "최고 레벨" : `Lv.${kycLevel + 1}까지 ${5 - kycLevel}단계`}
             </span>
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface">
             <div
               className="h-full rounded-full bg-primary"
-              style={{ width: `${(MOCK_ME.level / 5) * 100}%` }}
+              style={{ width: `${(kycLevel / 5) * 100}%` }}
             />
           </div>
           <div className="mt-3 text-[12px] text-muted-foreground">
-            지갑 검증을 마치면 Lv.4로 올라가요.
+            {profile?.kyc_status === "approved"
+              ? "계좌 인증이 승인되어 거래 준비가 완료되었습니다."
+              : "환전 계좌인증을 마치면 거래 신뢰도가 올라갑니다."}
           </div>
         </div>
       </Section>
@@ -370,7 +354,7 @@ function Profile() {
           ))}
           {showBankForm && (
             <BankAccountStepForm
-              expectedHolder={identity.idHolderName ?? MOCK_ME.name}
+              expectedHolder={displayName}
               onSubmit={async (entry) => {
                 try {
                   await addBank({

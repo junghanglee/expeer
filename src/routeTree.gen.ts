@@ -48,9 +48,11 @@ import { Route as AppSettingsNotificationsRouteImport } from './routes/app.setti
 import { Route as AppSettingsLegalRouteImport } from './routes/app.settings.legal'
 import { Route as AppSettingsAppearanceRouteImport } from './routes/app.settings.appearance'
 import { Route as AppSellingNewRouteImport } from './routes/app.selling.new'
+import { Route as AppSellingActivityIdRouteImport } from './routes/app.selling.$activityId'
 import { Route as AppOrderOrderIdRouteImport } from './routes/app.order.$orderId'
 import { Route as AppAdsAdIdRouteImport } from './routes/app.ads.$adId'
 import { Route as AppSellingOrdersOrderIdRouteImport } from './routes/app.selling.orders.$orderId'
+import { Route as AppSellingChatActivityIdRouteImport } from './routes/app.selling.chat.$activityId'
 import { Route as AppOrderNewAdIdRouteImport } from './routes/app.order.new.$adId'
 import { Route as AppOrderOrderIdReviewRouteImport } from './routes/app.order.$orderId.review'
 import { Route as AppOrderOrderIdProofRouteImport } from './routes/app.order.$orderId.proof'
@@ -259,6 +261,11 @@ const AppSellingNewRoute = AppSellingNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AppSellingRoute,
 } as any)
+const AppSellingActivityIdRoute = AppSellingActivityIdRouteImport.update({
+  id: '/$activityId',
+  path: '/$activityId',
+  getParentRoute: () => AppSellingRoute,
+} as any)
 const AppOrderOrderIdRoute = AppOrderOrderIdRouteImport.update({
   id: '/order/$orderId',
   path: '/order/$orderId',
@@ -274,6 +281,12 @@ const AppSellingOrdersOrderIdRoute = AppSellingOrdersOrderIdRouteImport.update({
   path: '/orders/$orderId',
   getParentRoute: () => AppSellingRoute,
 } as any)
+const AppSellingChatActivityIdRoute =
+  AppSellingChatActivityIdRouteImport.update({
+    id: '/chat/$activityId',
+    path: '/chat/$activityId',
+    getParentRoute: () => AppSellingRoute,
+  } as any)
 const AppOrderNewAdIdRoute = AppOrderNewAdIdRouteImport.update({
   id: '/order/new/$adId',
   path: '/order/new/$adId',
@@ -350,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/expeeradmin/': typeof ExpeeradminIndexRoute
   '/app/ads/$adId': typeof AppAdsAdIdRoute
   '/app/order/$orderId': typeof AppOrderOrderIdRouteWithChildren
+  '/app/selling/$activityId': typeof AppSellingActivityIdRoute
   '/app/selling/new': typeof AppSellingNewRoute
   '/app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/app/settings/legal': typeof AppSettingsLegalRoute
@@ -366,6 +380,7 @@ export interface FileRoutesByFullPath {
   '/app/order/$orderId/proof': typeof AppOrderOrderIdProofRoute
   '/app/order/$orderId/review': typeof AppOrderOrderIdReviewRoute
   '/app/order/new/$adId': typeof AppOrderNewAdIdRoute
+  '/app/selling/chat/$activityId': typeof AppSellingChatActivityIdRoute
   '/app/selling/orders/$orderId': typeof AppSellingOrdersOrderIdRoute
 }
 export interface FileRoutesByTo {
@@ -400,6 +415,7 @@ export interface FileRoutesByTo {
   '/expeeradmin': typeof ExpeeradminIndexRoute
   '/app/ads/$adId': typeof AppAdsAdIdRoute
   '/app/order/$orderId': typeof AppOrderOrderIdRouteWithChildren
+  '/app/selling/$activityId': typeof AppSellingActivityIdRoute
   '/app/selling/new': typeof AppSellingNewRoute
   '/app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/app/settings/legal': typeof AppSettingsLegalRoute
@@ -416,6 +432,7 @@ export interface FileRoutesByTo {
   '/app/order/$orderId/proof': typeof AppOrderOrderIdProofRoute
   '/app/order/$orderId/review': typeof AppOrderOrderIdReviewRoute
   '/app/order/new/$adId': typeof AppOrderNewAdIdRoute
+  '/app/selling/chat/$activityId': typeof AppSellingChatActivityIdRoute
   '/app/selling/orders/$orderId': typeof AppSellingOrdersOrderIdRoute
 }
 export interface FileRoutesById {
@@ -453,6 +470,7 @@ export interface FileRoutesById {
   '/expeeradmin/': typeof ExpeeradminIndexRoute
   '/app/ads/$adId': typeof AppAdsAdIdRoute
   '/app/order/$orderId': typeof AppOrderOrderIdRouteWithChildren
+  '/app/selling/$activityId': typeof AppSellingActivityIdRoute
   '/app/selling/new': typeof AppSellingNewRoute
   '/app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/app/settings/legal': typeof AppSettingsLegalRoute
@@ -469,6 +487,7 @@ export interface FileRoutesById {
   '/app/order/$orderId/proof': typeof AppOrderOrderIdProofRoute
   '/app/order/$orderId/review': typeof AppOrderOrderIdReviewRoute
   '/app/order/new/$adId': typeof AppOrderNewAdIdRoute
+  '/app/selling/chat/$activityId': typeof AppSellingChatActivityIdRoute
   '/app/selling/orders/$orderId': typeof AppSellingOrdersOrderIdRoute
 }
 export interface FileRouteTypes {
@@ -507,6 +526,7 @@ export interface FileRouteTypes {
     | '/expeeradmin/'
     | '/app/ads/$adId'
     | '/app/order/$orderId'
+    | '/app/selling/$activityId'
     | '/app/selling/new'
     | '/app/settings/appearance'
     | '/app/settings/legal'
@@ -523,6 +543,7 @@ export interface FileRouteTypes {
     | '/app/order/$orderId/proof'
     | '/app/order/$orderId/review'
     | '/app/order/new/$adId'
+    | '/app/selling/chat/$activityId'
     | '/app/selling/orders/$orderId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -557,6 +578,7 @@ export interface FileRouteTypes {
     | '/expeeradmin'
     | '/app/ads/$adId'
     | '/app/order/$orderId'
+    | '/app/selling/$activityId'
     | '/app/selling/new'
     | '/app/settings/appearance'
     | '/app/settings/legal'
@@ -573,6 +595,7 @@ export interface FileRouteTypes {
     | '/app/order/$orderId/proof'
     | '/app/order/$orderId/review'
     | '/app/order/new/$adId'
+    | '/app/selling/chat/$activityId'
     | '/app/selling/orders/$orderId'
   id:
     | '__root__'
@@ -609,6 +632,7 @@ export interface FileRouteTypes {
     | '/expeeradmin/'
     | '/app/ads/$adId'
     | '/app/order/$orderId'
+    | '/app/selling/$activityId'
     | '/app/selling/new'
     | '/app/settings/appearance'
     | '/app/settings/legal'
@@ -625,6 +649,7 @@ export interface FileRouteTypes {
     | '/app/order/$orderId/proof'
     | '/app/order/$orderId/review'
     | '/app/order/new/$adId'
+    | '/app/selling/chat/$activityId'
     | '/app/selling/orders/$orderId'
   fileRoutesById: FileRoutesById
 }
@@ -931,6 +956,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSellingNewRouteImport
       parentRoute: typeof AppSellingRoute
     }
+    '/app/selling/$activityId': {
+      id: '/app/selling/$activityId'
+      path: '/$activityId'
+      fullPath: '/app/selling/$activityId'
+      preLoaderRoute: typeof AppSellingActivityIdRouteImport
+      parentRoute: typeof AppSellingRoute
+    }
     '/app/order/$orderId': {
       id: '/app/order/$orderId'
       path: '/order/$orderId'
@@ -950,6 +982,13 @@ declare module '@tanstack/react-router' {
       path: '/orders/$orderId'
       fullPath: '/app/selling/orders/$orderId'
       preLoaderRoute: typeof AppSellingOrdersOrderIdRouteImport
+      parentRoute: typeof AppSellingRoute
+    }
+    '/app/selling/chat/$activityId': {
+      id: '/app/selling/chat/$activityId'
+      path: '/chat/$activityId'
+      fullPath: '/app/selling/chat/$activityId'
+      preLoaderRoute: typeof AppSellingChatActivityIdRouteImport
       parentRoute: typeof AppSellingRoute
     }
     '/app/order/new/$adId': {
@@ -1023,12 +1062,16 @@ const AppAdsRouteWithChildren =
   AppAdsRoute._addFileChildren(AppAdsRouteChildren)
 
 interface AppSellingRouteChildren {
+  AppSellingActivityIdRoute: typeof AppSellingActivityIdRoute
   AppSellingNewRoute: typeof AppSellingNewRoute
+  AppSellingChatActivityIdRoute: typeof AppSellingChatActivityIdRoute
   AppSellingOrdersOrderIdRoute: typeof AppSellingOrdersOrderIdRoute
 }
 
 const AppSellingRouteChildren: AppSellingRouteChildren = {
+  AppSellingActivityIdRoute: AppSellingActivityIdRoute,
   AppSellingNewRoute: AppSellingNewRoute,
+  AppSellingChatActivityIdRoute: AppSellingChatActivityIdRoute,
   AppSellingOrdersOrderIdRoute: AppSellingOrdersOrderIdRoute,
 }
 

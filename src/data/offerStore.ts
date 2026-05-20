@@ -1,14 +1,12 @@
 // DB-backed offer store. Loads ads from Supabase and exposes them in the
 // shapes the existing P2P 환전(market) and P2P 교환(swap) UIs already use
-// (SwapRequest, CryptoSwapOffer). Falls back to mock data when the DB is empty
-// or the user is signed-out, so the prototype remains explorable.
+// (SwapRequest, CryptoSwapOffer). Empty DB results stay empty so the UI reflects
+// the actual Supabase state instead of mixing in prototype data.
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { createCryptoSwapOffer, createFiatOffer } from "@/utils/offers.functions";
 import {
-  MOCK_SWAP_OPEN,
-  MOCK_CRYPTO_SWAPS,
   type SwapRequest,
   type SwapPair,
   type SwapSide,
@@ -16,7 +14,7 @@ import {
   type CryptoSwapOffer,
   type CryptoAsset,
   type VerificationLevel,
-} from "@/data/mock";
+} from "@/data/format";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 
 type AdRow = Tables<"ads">;
@@ -74,7 +72,7 @@ function adToCryptoSwap(ad: AdRow, myUserId?: string): CryptoSwapOffer | null {
 // ---------- hooks ----------
 export function useSwapRequests() {
   const { user } = useAuth();
-  const [items, setItems] = useState<SwapRequest[]>(MOCK_SWAP_OPEN);
+  const [items, setItems] = useState<SwapRequest[]>([]);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -85,7 +83,7 @@ export function useSwapRequests() {
     const mapped = (data ?? [])
       .map((a) => adToSwapRequest(a, user?.id))
       .filter((x): x is SwapRequest => x !== null);
-    setItems([...mapped, ...MOCK_SWAP_OPEN]);
+    setItems(mapped);
   }, [user?.id]);
 
   useEffect(() => {
@@ -104,7 +102,7 @@ export function useSwapRequests() {
 
 export function useCryptoSwaps() {
   const { user } = useAuth();
-  const [items, setItems] = useState<CryptoSwapOffer[]>(MOCK_CRYPTO_SWAPS);
+  const [items, setItems] = useState<CryptoSwapOffer[]>([]);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -115,7 +113,7 @@ export function useCryptoSwaps() {
     const mapped = (data ?? [])
       .map((a) => adToCryptoSwap(a, user?.id))
       .filter((x): x is CryptoSwapOffer => x !== null);
-    setItems([...mapped, ...MOCK_CRYPTO_SWAPS]);
+    setItems(mapped);
   }, [user?.id]);
 
   useEffect(() => {

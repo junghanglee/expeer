@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, AlertTriangle, QrCode, ClipboardPaste, Bookmark, ChevronDown } from "lucide-react";
-import type { CryptoAsset } from "@/data/mock";
+import type { CryptoAsset } from "@/data/format";
 
 /**
  * 체인별 주소 형식 검증.

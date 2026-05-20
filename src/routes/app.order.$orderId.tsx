@@ -6,7 +6,15 @@ import { CountdownTimer } from "@/components/espeer/CountdownTimer";
 import { CopyableField } from "@/components/espeer/CopyableField";
 import { BigNumber } from "@/components/espeer/BigNumber";
 import { Section } from "@/components/espeer/Section";
-import { Loader2, MessageCircle, FileText, ShieldAlert, Check, Star } from "lucide-react";
+import {
+  Loader2,
+  MessageCircle,
+  FileText,
+  ShieldAlert,
+  Check,
+  Star,
+  CheckCircle2,
+} from "lucide-react";
 import {
   useOrder,
   markOrderPaid,
@@ -185,37 +193,40 @@ function OrderDetail() {
         />
       </div>
 
+      <NextActionCard
+        status={status}
+        isBuyer={isBuyer}
+        isSeller={isSeller}
+        asset={order.asset}
+        fiat={order.fiat}
+        fiatAmount={Number(order.fiat_amount)}
+        remainSec={remainSec}
+      />
+
       {/* 수수료 내역 */}
       <Section title="수수료 내역">
         <div className="rounded-2xl border border-border bg-card p-3 text-[12px]">
           <FeeRow
             label={`매수자 수수료 (${Number(order.buyer_fee_pct)}%)`}
-            value={`${Number(order.buyer_fee_amount).toLocaleString("ko-KR")} ${order.fiat}`}
+            value={`${((Number(order.amount) * Number(order.buyer_fee_pct)) / 100).toLocaleString("ko-KR", { maximumFractionDigits: 6 })} ${order.asset}`}
             highlight={isBuyer}
           />
           <FeeRow
             label={`매도자 수수료 (${Number(order.seller_fee_pct)}%)`}
-            value={`${Number(order.seller_fee_amount).toLocaleString("ko-KR")} ${order.fiat}`}
+            value={`${((Number(order.amount) * Number(order.seller_fee_pct)) / 100).toLocaleString("ko-KR", { maximumFractionDigits: 6 })} ${order.asset}`}
             highlight={isSeller}
           />
           <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[11px] font-bold text-foreground">
-            <span>거래액</span>
+            <span>거래 수량</span>
             <span className="num-display">
-              {Number(order.fiat_amount).toLocaleString("ko-KR")} {order.fiat}
+              {Number(order.amount).toLocaleString("ko-KR", { maximumFractionDigits: 4 })}{" "}
+              {order.asset}
             </span>
           </div>
-          {(isBuyer || isSeller) && (
-            <div className="mt-2 flex items-center justify-between rounded-lg bg-surface px-2 py-1.5 text-[11px] font-bold text-primary">
-              <span>{isBuyer ? "내가 부담한 수수료" : "내가 부담한 수수료"}</span>
-              <span className="num-display">
-                {(isBuyer
-                  ? Number(order.buyer_fee_amount)
-                  : Number(order.seller_fee_amount)
-                ).toLocaleString("ko-KR")}{" "}
-                {order.fiat}
-              </span>
-            </div>
-          )}
+          <div className="mt-2 rounded-lg bg-surface px-2 py-1.5 text-[11px] font-semibold leading-relaxed text-muted-foreground">
+            EXPEER 수수료는 현금이 아니라 거래 코인 기준으로 계산됩니다. 플랫폼은 현금과 코인을
+            보관하지 않습니다.
+          </div>
         </div>
       </Section>
 
@@ -459,6 +470,91 @@ function OrderDetail() {
         )}
       </div>
     </PhoneShell>
+  );
+}
+
+function NextActionCard({
+  status,
+  isBuyer,
+  isSeller,
+  asset,
+  fiat,
+  fiatAmount,
+  remainSec,
+}: {
+  status: string;
+  isBuyer: boolean;
+  isSeller: boolean;
+  asset: string;
+  fiat: string;
+  fiatAmount: number;
+  remainSec: number;
+}) {
+  let title = "거래 상태 확인";
+  let desc = "아래 거래 정보와 채팅을 확인해 주세요.";
+  let items = ["거래 내용 확인", "상대방 안내 확인"];
+
+  if (isBuyer && (status === "created" || status === "info_shared")) {
+    title = "지금 해야 할 일: 입금하기";
+    desc = `${fiatAmount.toLocaleString("ko-KR")} ${fiat}를 판매자 계좌로 보낸 뒤, 아래의 입금 완료 버튼을 누르세요.`;
+    items = ["입금 계좌와 예금주 확인", "본인 명의 계좌로 송금", "입금 완료 버튼 누르기"];
+  } else if (isSeller && (status === "created" || status === "info_shared")) {
+    title = "지금 해야 할 일: 구매자 입금 대기";
+    desc = `구매자가 입금 완료를 누를 때까지 기다리세요. ${asset}는 에스크로 상태를 먼저 확인해야 합니다.`;
+    items = ["코인 락업 상태 확인", "구매자 입금 알림 대기", "채팅 요청 확인"];
+  } else if (
+    isSeller &&
+    (status === "paid" || status === "proof_uploaded" || status === "confirmed")
+  ) {
+    title = "지금 해야 할 일: 입금 확인";
+    desc =
+      "은행 앱에서 실제 입금자명과 금액을 확인한 뒤, 온체인 에스크로에서 구매자에게 지급하세요.";
+    items = ["은행 앱에서 입금 확인", "입금자명/금액 일치 확인", "구매자에게 코인 지급"];
+  } else if (
+    isBuyer &&
+    (status === "paid" || status === "proof_uploaded" || status === "confirmed")
+  ) {
+    title = "지금 해야 할 일: 판매자 확인 대기";
+    desc = "판매자가 입금 내역을 확인 중입니다. 문제가 있으면 채팅 또는 분쟁 신청을 이용하세요.";
+    items = ["채팅 알림 확인", "입금증 보관", "필요 시 분쟁 신청"];
+  } else if (status === "disputed") {
+    title = "지금 해야 할 일: 증빙 보관";
+    desc = "거래 자료를 다운로드하고, 채팅/입금증/계좌 정보를 보존하세요.";
+    items = ["증빙 패키지 다운로드", "채팅 내용 확인", "은행/수사기관 제출 준비"];
+  } else if (status === "released" || status === "completed") {
+    title = "거래 완료";
+    desc = "거래가 완료되었습니다. 필요하면 상대방 평가를 남겨 주세요.";
+    items = ["수령/지급 내역 확인", "상대방 평가", "증빙 보관"];
+  }
+
+  return (
+    <Section
+      title="지금 해야 할 일"
+      action={remainSec > 0 ? <CountdownTimer totalSec={remainSec} /> : undefined}
+    >
+      <div className="rounded-2xl border border-primary bg-primary-soft p-4">
+        <div className="flex items-start gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <CheckCircle2 className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[14px] font-extrabold text-foreground">{title}</div>
+            <p className="mt-1 text-[12px] leading-relaxed text-foreground/75">{desc}</p>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-1.5">
+          {items.map((item) => (
+            <div
+              key={item}
+              className="flex items-center gap-2 rounded-lg bg-background/70 px-2 py-1.5 text-[11px] font-semibold text-foreground/80"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+    </Section>
   );
 }
 

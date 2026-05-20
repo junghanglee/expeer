@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AdminShell } from "./expeeradmin.dashboard";
 import { supabase } from "@/integrations/supabase/client";
-import { fmtNum } from "@/data/mock";
+import { fmtNum } from "@/data/format";
 import { Loader2, Filter, Search, Pause, Play } from "lucide-react";
 import { toast } from "sonner";
 

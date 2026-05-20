@@ -3,7 +3,7 @@ import { Bell, ListOrdered, Megaphone, Wallet, ArrowRight, Plus, Inbox } from "l
 import { useAuth } from "@/lib/auth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useOrders } from "@/hooks/useOrders";
-import { fmtKrw, fmtNum } from "@/data/mock";
+import { fmtKrw, fmtNum } from "@/data/format";
 
 const STATUS_LABEL: Record<string, string> = {
   created: "생성됨",

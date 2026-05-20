@@ -3,7 +3,7 @@ import { AdminShell } from "./expeeradmin.dashboard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { adminToggleSuspend } from "@/utils/admin.functions";
-import { fmtNum } from "@/data/mock";
+import { fmtNum } from "@/data/format";
 import { Loader2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 

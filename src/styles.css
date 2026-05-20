@@ -208,6 +208,8 @@
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
+    position: relative;
+    z-index: 1;
   }
 
   /* Media inside the phone canvas should never exceed its width. */
@@ -261,6 +263,8 @@
       flex: 1;
       overflow-y: auto;
       scrollbar-width: thin;
+      position: relative;
+      z-index: 1;
     }
   }
 }

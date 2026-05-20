@@ -7,7 +7,7 @@ import {
   AlertTriangle,
   ChevronDown,
 } from "lucide-react";
-import type { CryptoAsset } from "@/data/mock";
+import type { CryptoAsset } from "@/data/format";
 import { WalletAddressField, validateAddress, type SavedAddress } from "./WalletAddressField";
 
 /**
@@ -73,7 +73,7 @@ export function WalletLinkCard({
   const scanBalance = async () => {
     setBusy("scan");
     await new Promise((r) => setTimeout(r, 800));
-    // mock
+    // TODO: 온체인 잔액 조회 API 연결 전까지 개발용 예상 잔액을 표시한다.
     const b = asset === "USDT" ? 1240.5 : asset === "USDC" ? 320.0 : 80.25;
     setBalance(b);
     setStatus("scanned");

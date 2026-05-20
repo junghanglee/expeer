@@ -1,6 +1,6 @@
 import { Building2, Check, ChevronDown, Plus } from "lucide-react";
 import { useState } from "react";
-import type { Bank } from "@/data/mock";
+import type { Bank } from "@/data/format";
 
 export interface BankAccountEntry {
   id: string;

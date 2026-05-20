@@ -19,18 +19,18 @@ import {
   COIN_PRICE_USD,
   STABLE_ASSETS,
   VOLATILE_ASSETS,
-  MOCK_SAVED_ADDRESSES,
   fmtNum,
   type CryptoAsset,
   type CryptoSwapOffer,
-} from "@/data/mock";
+} from "@/data/format";
 import { saveCryptoSwap, useCryptoSwaps } from "@/data/offerStore";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { NumberStepper } from "@/components/espeer/NumberStepper";
 import { useLivePrices } from "@/hooks/useLivePrices";
+import { useWallets } from "@/hooks/useWallets";
 
-// 실시간 시세를 우선 사용하고, 없으면 mock fallback
+// 실시간 시세를 우선 사용하고, 없으면 기본 기준가 사용
 function useUsdPriceMap(assets: CryptoAsset[]): Record<CryptoAsset, number> {
   const { quotes } = useLivePrices(assets as string[]);
   const out = { ...COIN_PRICE_USD };
@@ -63,15 +63,6 @@ export const Route = createFileRoute("/app/swap")({
 
 type Tab = "offers" | "myorders" | "done";
 
-// 사용자 보유 코인 (mock) — 실제는 지갑 잔고에서 산출
-const MY_HOLDINGS: { asset: CryptoAsset; balance: number }[] = [
-  { asset: "USDT", balance: 1240.5 },
-  { asset: "USDC", balance: 320 },
-  { asset: "BTC", balance: 0.018 },
-  { asset: "ETH", balance: 1.2 },
-  { asset: "SOL", balance: 12 },
-];
-
 type HoldingFilter = "all" | CryptoAsset;
 
 function SwapPage() {
@@ -81,6 +72,15 @@ function SwapPage() {
   const [toAsset, setToAsset] = useState<CryptoAsset>("BTC");
   const [holdingFilter, setHoldingFilter] = useState<HoldingFilter>("all");
   const [showTicket, setShowTicket] = useState(false);
+  const { wallets } = useWallets();
+  const holdings = useMemo(
+    () =>
+      wallets.map((wallet) => ({
+        asset: wallet.asset as CryptoAsset,
+        balance: 0,
+      })),
+    [wallets],
+  );
 
   // 전역 오퍼 스토어 — 사용자가 등록한 오퍼도 여기에 합쳐져서 모든 탭에 노출됨
   const allOffers = useCryptoSwaps();
@@ -161,7 +161,7 @@ function SwapPage() {
           >
             페어로 보기
           </button>
-          {MY_HOLDINGS.map((h) => {
+          {holdings.map((h) => {
             const active = holdingFilter === h.asset;
             return (
               <button
@@ -478,15 +478,18 @@ function SwapTicketSheet({
   const [to, setTo] = useState<CryptoAsset>(initialTo);
   const [fromAmount, setFromAmount] = useState<string>("");
   const [premium, setPremium] = useState<number>(0);
+  const { wallets } = useWallets();
 
   // 양방향 지갑 주소
-  const [savedAddrs, setSavedAddrs] = useState<SavedAddress[]>(
-    MOCK_SAVED_ADDRESSES.map((s) => ({
-      id: s.id,
-      asset: s.asset as CryptoAsset,
-      label: s.label,
-      address: s.address,
-    })),
+  const savedAddrs = useMemo<SavedAddress[]>(
+    () =>
+      wallets.map((wallet) => ({
+        id: wallet.id,
+        asset: wallet.asset as CryptoAsset,
+        label: wallet.label || `${wallet.asset} 지갑`,
+        address: wallet.address,
+      })),
+    [wallets],
   );
   const [fromAddr, setFromAddr] = useState<string>("");
   const [toAddr, setToAddr] = useState<string>("");
@@ -692,7 +695,6 @@ function SwapTicketSheet({
             value={fromAddr}
             onChange={setFromAddr}
             saved={savedAddrs}
-            onSave={(e) => setSavedAddrs((p) => [e, ...p])}
             label={`${from} 보낼 본인 지갑 (선택 · 매칭 시 사용)`}
           />
           <WalletAddressField
@@ -700,7 +702,6 @@ function SwapTicketSheet({
             value={toAddr}
             onChange={setToAddr}
             saved={savedAddrs}
-            onSave={(e) => setSavedAddrs((p) => [e, ...p])}
             label={`${to} 받을 본인 지갑 (선택)`}
           />
         </div>

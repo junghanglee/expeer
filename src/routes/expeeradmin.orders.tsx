@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { AdminShell } from "./expeeradmin.dashboard";
 import { supabase } from "@/integrations/supabase/client";
-import { fmtKrw, fmtNum } from "@/data/mock";
+import { fmtKrw, fmtNum } from "@/data/format";
 import { Loader2, Search, Filter } from "lucide-react";
 
 export const Route = createFileRoute("/expeeradmin/orders")({

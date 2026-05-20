@@ -14,8 +14,14 @@ function Login() {
   const { isAuthenticated } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = window.localStorage.getItem("expeer.login.email");
+    if (savedEmail) setEmail(savedEmail);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -32,10 +38,15 @@ function Login() {
     if (err) {
       setError(
         err.message === "Invalid login credentials"
-          ? "이메일 또는 비밀번호가 올바르지 않습니다."
+          ? "이메일 또는 비밀번호가 올바르지 않습니다. 회원가입한 계정으로 다시 시도하세요."
           : err.message,
       );
       return;
+    }
+    if (remember) {
+      window.localStorage.setItem("expeer.login.email", email);
+    } else {
+      window.localStorage.removeItem("expeer.login.email");
     }
     navigate({ to: "/app" });
   };
@@ -70,6 +81,16 @@ function Login() {
             required
             autoComplete="current-password"
           />
+
+          <label className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2.5 text-[12px] font-semibold text-foreground/80">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            이 브라우저에 이메일 저장
+          </label>
 
           {error && (
             <div className="rounded-lg bg-destructive-soft px-3 py-2 text-[12px] font-semibold text-destructive">

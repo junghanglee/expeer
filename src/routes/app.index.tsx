@@ -1,20 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { BigNumber } from "@/components/espeer/BigNumber";
 import { VerificationBadge } from "@/components/espeer/Badges";
 import { Section } from "@/components/espeer/Section";
 import { NotificationBell } from "@/components/espeer/NotificationBell";
-import {
-  MOCK_ME,
-  MOCK_PAIR_STATS,
-  MOCK_ACTIVITY,
-  STABLE_ASSETS,
-  type CryptoAsset,
-  type SwapPair,
-  fmtKrw,
-  fmtNum,
-} from "@/data/mock";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+import { STABLE_ASSETS, type CryptoAsset, type SwapPair, fmtKrw, fmtNum } from "@/data/format";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -31,30 +25,120 @@ export const Route = createFileRoute("/app/")({
   component: AppHome,
 });
 
-// 홈에서 선택 가능한 스테이블코인 (KRW 페어 보유분만 노출)
-const HOME_STABLES: CryptoAsset[] = STABLE_ASSETS; // USDT, USDC, DAI
+type Profile = Tables<"profiles">;
+type Order = Tables<"orders">;
+type Ad = Tables<"ads">;
+
+type HomeStats = {
+  midPrice: number;
+  bestSell: number | null;
+  bestBuy: number | null;
+  openAmount: number;
+  avgFillSec: number;
+  change24h: number;
+};
+
+const HOME_STABLES: readonly CryptoAsset[] = STABLE_ASSETS;
+const progressStatuses = [
+  "created",
+  "info_shared",
+  "paid",
+  "proof_uploaded",
+  "confirmed",
+  "released",
+  "disputed",
+];
 
 function pairFor(asset: CryptoAsset): SwapPair | null {
   if (asset === "USDT") return "USDT/KRW";
   if (asset === "USDC") return "USDC/KRW";
-  return null; // DAI는 KRW 페어 미지원 (안내)
+  return null;
 }
 
 function AppHome() {
+  const { user } = useAuth();
   const [asset, setAsset] = useState<CryptoAsset>("USDT");
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ads, setAds] = useState<Ad[]>([]);
 
-  // 프로필에서 저장한 기본 페어가 있으면 자산 동기화
   useEffect(() => {
     const v = window.localStorage.getItem("expeer.defaultPair") as SwapPair | null;
     if (v?.startsWith("USDC")) setAsset("USDC");
     else if (v?.startsWith("USDT")) setAsset("USDT");
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      const pairAssets = HOME_STABLES;
+      const adQuery = supabase
+        .from("ads")
+        .select("*")
+        .eq("status", "active")
+        .eq("fiat", "KRW")
+        .in("asset", pairAssets);
+
+      if (!user) {
+        const { data: activeAds } = await adQuery;
+        if (!cancelled) {
+          setProfile(null);
+          setOrders([]);
+          setAds(activeAds ?? []);
+        }
+        return;
+      }
+
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      const [{ data: profileRow }, { data: orderRows }, { data: activeAds }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+        supabase
+          .from("orders")
+          .select("*")
+          .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+          .order("created_at", { ascending: false }),
+        adQuery,
+      ]);
+
+      if (cancelled) return;
+      setProfile(profileRow ?? null);
+      setOrders(orderRows ?? []);
+      setAds(activeAds ?? []);
+    }
+
+    load();
+
+    const channel = supabase
+      .channel(`home:${user?.id ?? "guest"}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ads" }, load)
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const pair = pairFor(asset);
-  const stats = pair ? MOCK_PAIR_STATS[pair] : null;
-  const liveActivity = MOCK_ACTIVITY.filter(
-    (a) => a.status === "MATCHED" || a.status === "IN_PROGRESS",
-  ).length;
+  const assetAds = useMemo(() => ads.filter((ad) => ad.asset === asset), [ads, asset]);
+  const stats = useMemo(() => makeHomeStats(assetAds), [assetAds]);
+  const monthlyVolume = useMemo(() => {
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    return orders
+      .filter((order) => new Date(order.created_at) >= monthStart)
+      .reduce((sum, order) => sum + Number(order.fiat_amount), 0);
+  }, [orders]);
+  const liveActivity = orders.filter((order) => progressStatuses.includes(order.status)).length;
+  const userName =
+    profile?.nickname ?? profile?.real_name ?? user?.email?.split("@")[0] ?? "게스트";
+  const kycLevel = Math.min(5, Math.max(0, profile?.kyc_level ?? 0));
 
   return (
     <PhoneShell>
@@ -66,23 +150,21 @@ function AppHome() {
         <NotificationBell />
       </header>
 
-      {/* 사용자 요약 */}
       <div className="px-5 pt-2">
         <div className="flex items-center gap-2">
-          <span className="text-[14px] font-semibold text-muted-foreground">{MOCK_ME.name}님</span>
-          <VerificationBadge level={MOCK_ME.level} />
+          <span className="text-[14px] font-semibold text-muted-foreground">{userName}님</span>
+          <VerificationBadge level={kycLevel as 0 | 1 | 2 | 3 | 4 | 5} />
         </div>
         <div className="mt-2">
           <BigNumber
-            value={fmtKrw(MOCK_ME.monthlyVolumeKrw).replace("원", "")}
+            value={fmtKrw(monthlyVolume).replace("원", "")}
             unit="원"
             size="xl"
-            caption="이번 달 거래 금액"
+            caption="이번 달 실제 거래 금액"
           />
         </div>
       </div>
 
-      {/* 스테이블코인 선택 */}
       <div className="px-5 pt-3">
         <div className="flex items-center justify-between pb-1.5">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -113,7 +195,6 @@ function AppHome() {
         </div>
       </div>
 
-      {/* 라이브 시세 카드 */}
       <Section>
         {stats && pair ? (
           <Link
@@ -130,31 +211,24 @@ function AppHome() {
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <div className="num-display text-[32px]">{fmtNum(stats.midPrice, 0)}</div>
-              <div
-                className={`text-[12px] font-bold ${
-                  stats.change24h >= 0 ? "text-success" : "text-destructive"
-                }`}
-              >
-                {stats.change24h >= 0 ? "+" : ""}
-                {stats.change24h.toFixed(2)}%
-              </div>
+              <div className="text-[12px] font-bold text-muted-foreground">실제 오퍼 기준</div>
             </div>
-            <div className="mt-1 text-[10px] opacity-70">P2P 평균 거래 단가 / 1 {asset}</div>
+            <div className="mt-1 text-[10px] opacity-70">현재 등록된 P2P 평균 단가 / 1 {asset}</div>
             <div className="mt-1 flex items-center gap-3 text-[11px] opacity-80">
               <span className="inline-flex items-center gap-1">
-                <ActivityIcon className="h-3 w-3" /> 거래 가능 수량{" "}
-                {fmtNum(stats.openBuyToken + stats.openSellToken, 0)} {asset}
+                <ActivityIcon className="h-3 w-3" /> 거래 가능 수량 {fmtNum(stats.openAmount, 0)}{" "}
+                {asset}
               </span>
-              <span>· 평균 송금 {stats.avgFillSec}초</span>
+              <span>· 활성 오퍼 {assetAds.length}개</span>
             </div>
           </Link>
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-card p-4 text-center">
             <div className="text-[13px] font-bold text-foreground">
-              {asset}는 아직 KRW 환전 페어가 없어요
+              {asset}는 아직 활성 KRW 환전 오퍼가 없어요
             </div>
             <div className="mt-1 text-[11px] text-muted-foreground">
-              P2P 교환에서 다른 코인과 직접 교환할 수 있어요.
+              오퍼가 등록되면 실제 평균 단가와 거래 가능 수량이 표시됩니다.
             </div>
             <Link
               to="/app/swap"
@@ -165,7 +239,6 @@ function AppHome() {
           </div>
         )}
 
-        {/* 매수/매도 빠른 진입 */}
         {pair && stats && (
           <div className="mt-2.5 grid grid-cols-2 gap-2.5">
             <Link
@@ -173,28 +246,31 @@ function AppHome() {
               className="card-lift rounded-2xl bg-primary p-4 text-primary-foreground"
             >
               <div className="flex items-center gap-2 text-[12px] font-semibold opacity-90">
-                <ArrowDownToLine className="h-4 w-4" /> {asset} 사기
+                <ArrowDownToLine className="h-4 w-4" /> {asset} 받기
               </div>
-              <div className="mt-2 num-display text-2xl">₩{fmtNum(stats.bestSell, 0)}</div>
-              <div className="text-[11px] opacity-80">최저 판매자 단가 / 1 {asset}</div>
+              <div className="mt-2 num-display text-2xl">
+                ₩{fmtNum(stats.bestSell ?? stats.midPrice, 0)}
+              </div>
+              <div className="text-[11px] opacity-80">최저 판매 오퍼 단가 / 1 {asset}</div>
             </Link>
             <Link
               to="/app/market"
               className="card-lift rounded-2xl border border-border bg-card p-4"
             >
               <div className="flex items-center gap-2 text-[12px] font-semibold text-muted-foreground">
-                <ArrowUpFromLine className="h-4 w-4" /> {asset} 팔기
+                <ArrowUpFromLine className="h-4 w-4" /> {asset} 보내기
               </div>
               <div className="mt-2 num-display text-2xl text-foreground">
-                ₩{fmtNum(stats.bestBuy, 0)}
+                ₩{fmtNum(stats.bestBuy ?? stats.midPrice, 0)}
               </div>
-              <div className="text-[11px] text-muted-foreground">최고 구매자 단가 / 1 {asset}</div>
+              <div className="text-[11px] text-muted-foreground">
+                최고 구매 오퍼 단가 / 1 {asset}
+              </div>
             </Link>
           </div>
         )}
       </Section>
 
-      {/* 두 가지 거래 모드 안내 */}
       <Section title="거래 모드">
         <div className="grid grid-cols-2 gap-2">
           <Link to="/app/market" className="card-lift rounded-2xl border border-border bg-card p-3">
@@ -214,7 +290,6 @@ function AppHome() {
         </div>
       </Section>
 
-      {/* Zero-Custody mini banner */}
       <div className="mx-5 mt-3 flex items-start gap-2 rounded-xl border border-primary-soft bg-primary-soft/60 p-3">
         <Lock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <div className="text-[11px] leading-relaxed text-foreground/80">
@@ -223,7 +298,6 @@ function AppHome() {
         </div>
       </div>
 
-      {/* 진행중 활동 요약 */}
       <Section
         title="내 활동"
         action={
@@ -244,28 +318,51 @@ function AppHome() {
           </div>
           <div className="flex-1">
             <div className="text-[13px] font-extrabold text-foreground">
-              진행중 {liveActivity}건 · 채팅 대기
+              진행중 {liveActivity}건 · 실제 거래방
             </div>
             <div className="text-[11px] text-muted-foreground">
-              매칭된 거래는 채팅으로 연결돼요. 완료 후 24시간 유효
+              생성된 주문은 거래방 채팅으로 바로 이어집니다.
             </div>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
       </Section>
 
-      {/* 신뢰 통계 */}
-      <Section title="신뢰 통계">
+      <Section title="실시간 현황">
         <div className="grid grid-cols-3 gap-2 rounded-2xl bg-surface p-4">
-          <Stat label="이번주 P2P 거래" value="38,402건" />
-          <Stat label="평균 송금 시간" value="62초" />
-          <Stat label="분쟁 발생률" value="0.31%" />
+          <Stat label="활성 오퍼" value={`${ads.length}개`} />
+          <Stat label="내 진행 거래" value={`${liveActivity}건`} />
+          <Stat label="내 누적 거래" value={`${orders.length}건`} />
         </div>
       </Section>
 
       <div className="h-6" />
     </PhoneShell>
   );
+}
+
+function makeHomeStats(ads: Ad[]): HomeStats | null {
+  if (ads.length === 0) return null;
+  const prices = ads
+    .map((ad) => Number(ad.price))
+    .filter((price) => Number.isFinite(price) && price > 0);
+  if (prices.length === 0) return null;
+  const sellPrices = ads
+    .filter((ad) => ad.side === "sell")
+    .map((ad) => Number(ad.price))
+    .filter((price) => price > 0);
+  const buyPrices = ads
+    .filter((ad) => ad.side === "buy")
+    .map((ad) => Number(ad.price))
+    .filter((price) => price > 0);
+  return {
+    midPrice: prices.reduce((sum, price) => sum + price, 0) / prices.length,
+    bestSell: sellPrices.length ? Math.min(...sellPrices) : null,
+    bestBuy: buyPrices.length ? Math.max(...buyPrices) : null,
+    openAmount: ads.reduce((sum, ad) => sum + Number(ad.available_amount), 0),
+    avgFillSec: 0,
+    change24h: 0,
+  };
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
