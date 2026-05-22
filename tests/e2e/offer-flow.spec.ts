@@ -78,8 +78,9 @@ test("seller can log in, register a Supabase-backed offer, and see it in market"
 
   await page.goto("/app/market");
   await expect(page.getByText("P2P 환전").first()).toBeVisible();
-  await page.getByRole("button", { name: /USDC/ }).nth(1).click();
-  await expect(page.getByText("USDC 판매 오퍼").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /● 코인 → KRW/ })).toContainText("1");
+  await page.getByRole("button", { name: /● 코인 → KRW/ }).click();
+  await expect(page.getByText("코인을 주고 KRW를 받을 수 있는 오퍼")).toBeVisible();
   await expect(page.getByText("1,380").first()).toBeVisible();
 });
 
@@ -155,8 +156,8 @@ test("buyer can open market offer and create order chat", async ({ page }) => {
   await expect(page.getByText("거래방이 생성되었습니다")).toBeVisible();
 
   await page.goto(`/app/order/${orderId}`);
-  await expect(page.getByText("이 계좌로 송금해 주세요")).toBeVisible();
-  await expect(page.getByText("토스뱅크")).toBeVisible();
+  await expect(page.getByText("지금 해야 할 일: 입금하기")).toBeVisible();
+  await expect(page.getByText("입금 계좌와 예금주 확인")).toBeVisible();
   await expect(
     page.getByText(/판매자 계좌 조회 RPC가 아직 Supabase에 적용되지 않았어요/),
   ).toHaveCount(0);
@@ -215,7 +216,7 @@ test("buyer payment and seller completion update order activity", async ({ page 
   await page.goto(`/app/order/${order.id}`);
   await expect(page.getByText("지금 해야 할 일: 입금하기")).toBeVisible();
   await page.getByRole("button", { name: "입금 완료 표시" }).click();
-  await expect(page.getByText("판매자가 입금을 확인 중이에요")).toBeVisible();
+  await expect(page.getByText("판매자가 입금을 확인 중")).toBeVisible();
 
   const { data: paidOrder, error: paidError } = await buyer.supabase
     .from("orders")
