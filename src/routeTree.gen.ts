@@ -43,6 +43,7 @@ import { Route as AppAdsRouteImport } from './routes/app.ads'
 import { Route as ExpeeradminDisputesIndexRouteImport } from './routes/expeeradmin.disputes.index'
 import { Route as AppSettingsIndexRouteImport } from './routes/app.settings.index'
 import { Route as ExpeeradminDisputesIdRouteImport } from './routes/expeeradmin.disputes.$id'
+import { Route as AppSwapNewRouteImport } from './routes/app.swap.new'
 import { Route as AppSettingsSecurityRouteImport } from './routes/app.settings.security'
 import { Route as AppSettingsNotificationsRouteImport } from './routes/app.settings.notifications'
 import { Route as AppSettingsLegalRouteImport } from './routes/app.settings.legal'
@@ -61,6 +62,7 @@ import { Route as AppOrderOrderIdChatRouteImport } from './routes/app.order.$ord
 import { Route as ApiPublicPaymentsTossRouteImport } from './routes/api/public/payments/toss'
 import { Route as ApiPublicCronIndexChainRouteImport } from './routes/api/public/cron/index-chain'
 import { Route as ApiPublicCronExpireOrdersRouteImport } from './routes/api/public/cron/expire-orders'
+import { Route as AppSwapOrderNewOfferIdRouteImport } from './routes/app.swap.order.new.$offerId'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -235,6 +237,11 @@ const ExpeeradminDisputesIdRoute = ExpeeradminDisputesIdRouteImport.update({
   path: '/expeeradmin/disputes/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSwapNewRoute = AppSwapNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AppSwapRoute,
+} as any)
 const AppSettingsSecurityRoute = AppSettingsSecurityRouteImport.update({
   id: '/security',
   path: '/security',
@@ -328,6 +335,11 @@ const ApiPublicCronExpireOrdersRoute =
     path: '/api/public/cron/expire-orders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AppSwapOrderNewOfferIdRoute = AppSwapOrderNewOfferIdRouteImport.update({
+  id: '/order/new/$offerId',
+  path: '/order/new/$offerId',
+  getParentRoute: () => AppSwapRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -341,7 +353,7 @@ export interface FileRoutesByFullPath {
   '/app/profile': typeof AppProfileRoute
   '/app/selling': typeof AppSellingRouteWithChildren
   '/app/settings': typeof AppSettingsRouteWithChildren
-  '/app/swap': typeof AppSwapRoute
+  '/app/swap': typeof AppSwapRouteWithChildren
   '/app/wallet': typeof AppWalletRoute
   '/expeeradmin/ads': typeof ExpeeradminAdsRoute
   '/expeeradmin/announcements': typeof ExpeeradminAnnouncementsRoute
@@ -369,6 +381,7 @@ export interface FileRoutesByFullPath {
   '/app/settings/legal': typeof AppSettingsLegalRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
+  '/app/swap/new': typeof AppSwapNewRoute
   '/expeeradmin/disputes/$id': typeof ExpeeradminDisputesIdRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/expeeradmin/disputes/': typeof ExpeeradminDisputesIndexRoute
@@ -382,6 +395,7 @@ export interface FileRoutesByFullPath {
   '/app/order/new/$adId': typeof AppOrderNewAdIdRoute
   '/app/selling/chat/$activityId': typeof AppSellingChatActivityIdRoute
   '/app/selling/orders/$orderId': typeof AppSellingOrdersOrderIdRoute
+  '/app/swap/order/new/$offerId': typeof AppSwapOrderNewOfferIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -393,7 +407,7 @@ export interface FileRoutesByTo {
   '/app/orders': typeof AppOrdersRoute
   '/app/profile': typeof AppProfileRoute
   '/app/selling': typeof AppSellingRouteWithChildren
-  '/app/swap': typeof AppSwapRoute
+  '/app/swap': typeof AppSwapRouteWithChildren
   '/app/wallet': typeof AppWalletRoute
   '/expeeradmin/ads': typeof ExpeeradminAdsRoute
   '/expeeradmin/announcements': typeof ExpeeradminAnnouncementsRoute
@@ -421,6 +435,7 @@ export interface FileRoutesByTo {
   '/app/settings/legal': typeof AppSettingsLegalRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
+  '/app/swap/new': typeof AppSwapNewRoute
   '/expeeradmin/disputes/$id': typeof ExpeeradminDisputesIdRoute
   '/app/settings': typeof AppSettingsIndexRoute
   '/expeeradmin/disputes': typeof ExpeeradminDisputesIndexRoute
@@ -434,6 +449,7 @@ export interface FileRoutesByTo {
   '/app/order/new/$adId': typeof AppOrderNewAdIdRoute
   '/app/selling/chat/$activityId': typeof AppSellingChatActivityIdRoute
   '/app/selling/orders/$orderId': typeof AppSellingOrdersOrderIdRoute
+  '/app/swap/order/new/$offerId': typeof AppSwapOrderNewOfferIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -448,7 +464,7 @@ export interface FileRoutesById {
   '/app/profile': typeof AppProfileRoute
   '/app/selling': typeof AppSellingRouteWithChildren
   '/app/settings': typeof AppSettingsRouteWithChildren
-  '/app/swap': typeof AppSwapRoute
+  '/app/swap': typeof AppSwapRouteWithChildren
   '/app/wallet': typeof AppWalletRoute
   '/expeeradmin/ads': typeof ExpeeradminAdsRoute
   '/expeeradmin/announcements': typeof ExpeeradminAnnouncementsRoute
@@ -476,6 +492,7 @@ export interface FileRoutesById {
   '/app/settings/legal': typeof AppSettingsLegalRoute
   '/app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
+  '/app/swap/new': typeof AppSwapNewRoute
   '/expeeradmin/disputes/$id': typeof ExpeeradminDisputesIdRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/expeeradmin/disputes/': typeof ExpeeradminDisputesIndexRoute
@@ -489,6 +506,7 @@ export interface FileRoutesById {
   '/app/order/new/$adId': typeof AppOrderNewAdIdRoute
   '/app/selling/chat/$activityId': typeof AppSellingChatActivityIdRoute
   '/app/selling/orders/$orderId': typeof AppSellingOrdersOrderIdRoute
+  '/app/swap/order/new/$offerId': typeof AppSwapOrderNewOfferIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -532,6 +550,7 @@ export interface FileRouteTypes {
     | '/app/settings/legal'
     | '/app/settings/notifications'
     | '/app/settings/security'
+    | '/app/swap/new'
     | '/expeeradmin/disputes/$id'
     | '/app/settings/'
     | '/expeeradmin/disputes/'
@@ -545,6 +564,7 @@ export interface FileRouteTypes {
     | '/app/order/new/$adId'
     | '/app/selling/chat/$activityId'
     | '/app/selling/orders/$orderId'
+    | '/app/swap/order/new/$offerId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -584,6 +604,7 @@ export interface FileRouteTypes {
     | '/app/settings/legal'
     | '/app/settings/notifications'
     | '/app/settings/security'
+    | '/app/swap/new'
     | '/expeeradmin/disputes/$id'
     | '/app/settings'
     | '/expeeradmin/disputes'
@@ -597,6 +618,7 @@ export interface FileRouteTypes {
     | '/app/order/new/$adId'
     | '/app/selling/chat/$activityId'
     | '/app/selling/orders/$orderId'
+    | '/app/swap/order/new/$offerId'
   id:
     | '__root__'
     | '/'
@@ -638,6 +660,7 @@ export interface FileRouteTypes {
     | '/app/settings/legal'
     | '/app/settings/notifications'
     | '/app/settings/security'
+    | '/app/swap/new'
     | '/expeeradmin/disputes/$id'
     | '/app/settings/'
     | '/expeeradmin/disputes/'
@@ -651,6 +674,7 @@ export interface FileRouteTypes {
     | '/app/order/new/$adId'
     | '/app/selling/chat/$activityId'
     | '/app/selling/orders/$orderId'
+    | '/app/swap/order/new/$offerId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -921,6 +945,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExpeeradminDisputesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/swap/new': {
+      id: '/app/swap/new'
+      path: '/new'
+      fullPath: '/app/swap/new'
+      preLoaderRoute: typeof AppSwapNewRouteImport
+      parentRoute: typeof AppSwapRoute
+    }
     '/app/settings/security': {
       id: '/app/settings/security'
       path: '/security'
@@ -1047,6 +1078,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronExpireOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/swap/order/new/$offerId': {
+      id: '/app/swap/order/new/$offerId'
+      path: '/order/new/$offerId'
+      fullPath: '/app/swap/order/new/$offerId'
+      preLoaderRoute: typeof AppSwapOrderNewOfferIdRouteImport
+      parentRoute: typeof AppSwapRoute
+    }
   }
 }
 
@@ -1099,6 +1137,19 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
   AppSettingsRouteChildren,
 )
 
+interface AppSwapRouteChildren {
+  AppSwapNewRoute: typeof AppSwapNewRoute
+  AppSwapOrderNewOfferIdRoute: typeof AppSwapOrderNewOfferIdRoute
+}
+
+const AppSwapRouteChildren: AppSwapRouteChildren = {
+  AppSwapNewRoute: AppSwapNewRoute,
+  AppSwapOrderNewOfferIdRoute: AppSwapOrderNewOfferIdRoute,
+}
+
+const AppSwapRouteWithChildren =
+  AppSwapRoute._addFileChildren(AppSwapRouteChildren)
+
 interface AppOrderOrderIdRouteChildren {
   AppOrderOrderIdChatRoute: typeof AppOrderOrderIdChatRoute
   AppOrderOrderIdDisputeRoute: typeof AppOrderOrderIdDisputeRoute
@@ -1126,7 +1177,7 @@ interface AppRouteChildren {
   AppProfileRoute: typeof AppProfileRoute
   AppSellingRoute: typeof AppSellingRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
-  AppSwapRoute: typeof AppSwapRoute
+  AppSwapRoute: typeof AppSwapRouteWithChildren
   AppWalletRoute: typeof AppWalletRoute
   AppIndexRoute: typeof AppIndexRoute
   AppOrderOrderIdRoute: typeof AppOrderOrderIdRouteWithChildren
@@ -1142,7 +1193,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileRoute: AppProfileRoute,
   AppSellingRoute: AppSellingRouteWithChildren,
   AppSettingsRoute: AppSettingsRouteWithChildren,
-  AppSwapRoute: AppSwapRoute,
+  AppSwapRoute: AppSwapRouteWithChildren,
   AppWalletRoute: AppWalletRoute,
   AppIndexRoute: AppIndexRoute,
   AppOrderOrderIdRoute: AppOrderOrderIdRouteWithChildren,
@@ -1183,10 +1234,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { Section } from "@/components/espeer/Section";
-import { NumberStepper } from "@/components/espeer/NumberStepper";
-import { ArrowLeft, Plus, ShieldCheck, Lock, Loader2 } from "lucide-react";
+import { ArrowLeftRight, ArrowLeft, Plus, ShieldCheck, Lock, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
@@ -14,6 +13,13 @@ import { z } from "zod";
 const searchSchema = z.object({
   side: z.enum(["sell", "buy"]).optional(),
   asset: z.string().optional(),
+  give: z.enum(["KRW", "USDT", "USDC", "DAI"]).optional(),
+  receive: z.enum(["KRW", "USDT", "USDC", "DAI"]).optional(),
+  price: z.string().optional(),
+  fiatAmount: z.string().optional(),
+  coinAmount: z.string().optional(),
+  minOrder: z.string().optional(),
+  maxOrder: z.string().optional(),
 });
 
 export const Route = createFileRoute("/app/selling/new")({
@@ -23,6 +29,20 @@ export const Route = createFileRoute("/app/selling/new")({
 });
 
 const ASSETS = ["USDT", "USDC", "DAI", "BTC", "ETH", "SOL", "BNB", "XRP", "MATIC"] as const;
+type OfferAsset = (typeof ASSETS)[number];
+const ASSET_LABELS: Record<OfferAsset, { badge: string; fullName: string }> = {
+  USDT: { badge: "₮", fullName: "Tether USD" },
+  USDC: { badge: "$", fullName: "USD Coin" },
+  DAI: { badge: "◈", fullName: "Dai Stablecoin" },
+  BTC: { badge: "₿", fullName: "Bitcoin" },
+  ETH: { badge: "Ξ", fullName: "Ethereum" },
+  SOL: { badge: "◎", fullName: "Solana" },
+  BNB: { badge: "B", fullName: "BNB" },
+  XRP: { badge: "X", fullName: "XRP" },
+  MATIC: { badge: "M", fullName: "Polygon" },
+};
+type OfferPickerAsset = OfferAsset | "KRW";
+const PICKER_ASSETS: OfferPickerAsset[] = ["KRW", ...ASSETS];
 const NETWORKS: Record<string, string[]> = {
   USDT: ["TRC20", "ERC20", "BEP20", "Base Sepolia"],
   USDC: ["Base Sepolia", "ERC20", "BEP20", "Polygon"],
@@ -43,16 +63,30 @@ function NewOffer() {
   const { accounts } = useBankAccounts();
   const { wallets } = useWallets();
 
-  const initialAsset = ASSETS.includes(search.asset as (typeof ASSETS)[number])
-    ? (search.asset as (typeof ASSETS)[number])
+  const initialAsset = ASSETS.includes(search.asset as OfferAsset)
+    ? (search.asset as OfferAsset)
     : "USDC";
-  const [side, setSide] = useState<"sell" | "buy">(search.side ?? "sell");
-  const [asset, setAsset] = useState<string>(initialAsset);
+  const initialGive =
+    (search.give as OfferPickerAsset | undefined) ?? (search.side === "buy" ? "KRW" : initialAsset);
+  const initialReceive =
+    (search.receive as OfferPickerAsset | undefined) ??
+    (initialGive === "KRW" ? initialAsset : "KRW");
+  const [giveAsset, setGiveAsset] = useState<OfferPickerAsset>(initialGive);
+  const [receiveAsset, setReceiveAsset] = useState<OfferPickerAsset>(
+    initialReceive === initialGive ? "KRW" : initialReceive,
+  );
+  const [pickerOpen, setPickerOpen] = useState<"give" | "receive" | null>(null);
+  const [pickerQuery, setPickerQuery] = useState("");
+  const side: "sell" | "buy" = giveAsset === "KRW" ? "buy" : "sell";
+  const asset = (giveAsset === "KRW" ? receiveAsset : giveAsset) as OfferAsset;
+  const tone = side === "buy" ? "success" : "destructive";
   const [network, setNetwork] = useState<string>("Base Sepolia");
-  const [price, setPrice] = useState("1380");
-  const [total, setTotal] = useState("1000");
-  const [minOrder, setMinOrder] = useState("100000");
-  const [maxOrder, setMaxOrder] = useState("10000000");
+  const [price, setPrice] = useState(search.price ?? "1380");
+  const [coinAmount, setCoinAmount] = useState(search.coinAmount ?? "1000");
+  const [fiatAmount, setFiatAmount] = useState(search.fiatAmount ?? "1380000");
+  const [orderMode, setOrderMode] = useState<"full" | "partial">("partial");
+  const [minOrder, setMinOrder] = useState(search.minOrder ?? "10");
+  const [maxOrder, setMaxOrder] = useState(search.coinAmount ?? "1000");
   const [methods, setMethods] = useState<string[]>(["bank_transfer"]);
   const [terms, setTerms] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -62,19 +96,42 @@ function NewOffer() {
     setNetwork(NETWORKS[asset][0]);
   }, [asset]);
 
+  const recalcFiatFromCoin = (nextCoin: string, nextPrice = price) => {
+    setCoinAmount(nextCoin);
+    const coin = Number(nextCoin);
+    const unit = Number(nextPrice);
+    setFiatAmount(coin > 0 && unit > 0 ? String(Math.round(coin * unit)) : "");
+  };
+  const updatePrice = (nextPrice: string) => {
+    setPrice(nextPrice);
+    recalcFiatFromCoin(coinAmount, nextPrice);
+  };
+  const setFullOrder = () => {
+    setOrderMode("full");
+    setMinOrder(coinAmount || "0");
+    setMaxOrder(coinAmount || "0");
+  };
+  const setPartialOrder = () => {
+    setOrderMode("partial");
+    setMinOrder((prev) => (prev && Number(prev) > 0 ? prev : "10"));
+    setMaxOrder(coinAmount || maxOrder);
+  };
+
   const assetWallets = useMemo(
     () => wallets.filter((w) => w.asset === asset && w.network === network),
     [wallets, asset, network],
   );
   const primaryBank = accounts[0];
   const primaryWallet = assetWallets[0];
-  const totalFiat = Number(total) * Number(price);
+  const totalFiat = Number(fiatAmount);
 
   const valid =
     Number(price) > 0 &&
-    Number(total) > 0 &&
+    Number(coinAmount) > 0 &&
+    Number(fiatAmount) > 0 &&
     Number(minOrder) > 0 &&
     Number(maxOrder) >= Number(minOrder) &&
+    Number(maxOrder) <= Number(coinAmount) &&
     methods.length > 0 &&
     (side === "buy" ? accounts.length > 0 : assetWallets.length > 0);
 
@@ -93,9 +150,11 @@ function NewOffer() {
         network,
         fiat: "KRW",
         price: Number(price),
-        total_amount: Number(total),
-        min_order: Number(minOrder),
-        max_order: Number(maxOrder),
+        total_amount: Number(coinAmount),
+        min_order:
+          orderMode === "full" ? Number(fiatAmount) : Math.round(Number(minOrder) * Number(price)),
+        max_order:
+          orderMode === "full" ? Number(fiatAmount) : Math.round(Number(maxOrder) * Number(price)),
         payment_methods: methods,
         terms: terms.trim() || null,
         status: "active",
@@ -112,6 +171,35 @@ function NewOffer() {
 
   const toggleMethod = (m: string) =>
     setMethods((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
+
+  const selectGive = (next: OfferPickerAsset) => {
+    setGiveAsset(next);
+    setReceiveAsset(next === "KRW" ? asset : "KRW");
+    setPickerOpen(null);
+  };
+  const selectReceive = (next: OfferPickerAsset) => {
+    setReceiveAsset(next);
+    setGiveAsset(next === "KRW" ? asset : "KRW");
+    setPickerOpen(null);
+  };
+  const switchAssets = () => {
+    setGiveAsset(receiveAsset);
+    setReceiveAsset(giveAsset);
+    setPickerOpen(null);
+  };
+  const pickerOptions = (target: "give" | "receive"): OfferPickerAsset[] =>
+    target === "give" ? PICKER_ASSETS : giveAsset === "KRW" ? [...ASSETS] : ["KRW"];
+  const currentPickerOptions = pickerOpen ? pickerOptions(pickerOpen) : [];
+  const filteredPickerOptions = currentPickerOptions.filter((item) => {
+    const q = pickerQuery.trim().toLowerCase();
+    if (!q) return true;
+    const metaName = item === "KRW" ? "대한민국 원" : ASSET_LABELS[item].fullName;
+    return item.toLowerCase().includes(q) || metaName.toLowerCase().includes(q);
+  });
+  const openPicker = (target: "give" | "receive") => {
+    setPickerOpen((prev) => (prev === target ? null : target));
+    setPickerQuery("");
+  };
 
   return (
     <PhoneShell hideTab>
@@ -132,100 +220,193 @@ function NewOffer() {
         </div>
       </header>
 
-      <div className="mx-4 mt-3 flex items-start gap-2 rounded-xl border border-primary-soft bg-primary-soft/60 p-3">
-        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <div className="text-[11px] leading-relaxed text-foreground/80">
-          <b>{side === "sell" ? "판매 오퍼" : "구매 오퍼"}</b>를 등록합니다. 오퍼 등록 시점에는
-          자산이 이동하지 않고, 주문이 매칭되면 거래방에서 계좌·지갑 확인 후 단계별로 진행합니다.
+      <div
+        className={`mx-4 mt-3 flex items-start gap-2 rounded-xl border p-2.5 ${side === "buy" ? "border-success/20 bg-success-soft text-success" : "border-destructive/20 bg-destructive-soft text-destructive"}`}
+      >
+        <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="text-[11px] leading-relaxed">
+          <b>{side === "sell" ? "판매 오퍼" : "구매 오퍼"}</b> · {giveAsset} → {receiveAsset}
         </div>
       </div>
 
-      <Section title="오퍼 종류">
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            onClick={() => setSide("sell")}
-            className={`rounded-xl py-2.5 text-[12px] font-extrabold transition-colors ${
-              side === "sell"
-                ? "bg-destructive text-destructive-foreground"
-                : "bg-surface text-muted-foreground"
-            }`}
-          >
-            판매 오퍼 등록
-            <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
-              다른 사용자가 코인을 구매
-            </span>
-          </button>
-          <button
-            onClick={() => setSide("buy")}
-            className={`rounded-xl py-2.5 text-[12px] font-extrabold transition-colors ${
-              side === "buy"
-                ? "bg-success text-success-foreground"
-                : "bg-surface text-muted-foreground"
-            }`}
-          >
-            구매 오퍼 등록
-            <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
-              다른 사용자가 코인을 판매
-            </span>
-          </button>
-        </div>
-      </Section>
-
-      <Section title="자산 / 네트워크">
-        <div className="space-y-2">
-          <div className="flex gap-1.5">
-            {ASSETS.map((a) => (
-              <button
-                key={a}
-                onClick={() => setAsset(a)}
-                className={`flex-1 rounded-xl py-2 text-[12px] font-bold ${
-                  asset === a
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-surface text-muted-foreground"
-                }`}
-              >
-                {a}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {NETWORKS[asset].map((n) => (
-              <button
-                key={n}
-                onClick={() => setNetwork(n)}
-                className={`rounded-lg px-3 py-1.5 text-[12px] font-bold ${
-                  network === n
-                    ? "bg-primary-soft text-primary"
-                    : "bg-surface text-muted-foreground"
-                }`}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      <Section title="가격 · 수량 · 한도">
-        <div className="space-y-2.5">
-          <label className="block">
-            <div className="mb-1 text-[11px] font-semibold text-muted-foreground">
-              단가 (KRW / 1 {asset})
-            </div>
-            <NumberStepper
-              value={price}
-              onChange={setPrice}
-              step={1}
-              min={0}
-              unit="KRW"
-              ariaLabel="단가"
+      <Section title="내가 줄 것 / 받을 것">
+        <div className="space-y-2 rounded-2xl border border-border bg-card p-2.5">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+            <OfferAssetActionButton
+              label="내가 줄 것 선택"
+              value={giveAsset}
+              active={pickerOpen === "give"}
+              tone={tone}
+              onClick={() => openPicker("give")}
             />
-          </label>
-          <NumField label={`총 수량 (${asset})`} value={total} onChange={setTotal} />
-          <div className="grid grid-cols-2 gap-2">
-            <NumField label="최소 주문 (KRW)" value={minOrder} onChange={setMinOrder} />
-            <NumField label="최대 주문 (KRW)" value={maxOrder} onChange={setMaxOrder} />
+            <button
+              onClick={switchAssets}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+            </button>
+            <OfferAssetActionButton
+              label="내가 받을 것 선택"
+              value={receiveAsset}
+              active={pickerOpen === "receive"}
+              tone={tone}
+              onClick={() => openPicker("receive")}
+            />
           </div>
+          {pickerOpen && (
+            <div className="rounded-2xl border border-border bg-background p-2 shadow-sm">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-[12px] font-extrabold text-foreground">
+                    {pickerOpen === "give" ? "내가 줄 것 선택" : "내가 받을 것 선택"}
+                  </div>
+                  <div className="text-[10px] font-bold text-muted-foreground">
+                    {pickerOpen === "give"
+                      ? "KRW 또는 코인을 선택하세요"
+                      : "KRW 또는 코인을 선택하세요"}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPickerOpen(null)}
+                  className="rounded-full bg-surface px-2 py-1 text-[10px] font-bold text-muted-foreground"
+                >
+                  닫기
+                </button>
+              </div>
+              <input
+                value={pickerQuery}
+                onChange={(e) => setPickerQuery(e.target.value)}
+                placeholder="코인명 검색"
+                className="mb-2 h-9 w-full rounded-xl bg-surface px-3 text-[12px] font-bold text-foreground outline-none placeholder:text-muted-foreground"
+              />
+              <div className="max-h-60 space-y-1 overflow-y-auto pr-1">
+                {filteredPickerOptions.map((item) => {
+                  const badge = item === "KRW" ? "₩" : ASSET_LABELS[item].badge;
+                  const name = item === "KRW" ? "대한민국 원" : ASSET_LABELS[item].fullName;
+                  return (
+                    <button
+                      key={item}
+                      onClick={() =>
+                        pickerOpen === "give" ? selectGive(item) : selectReceive(item)
+                      }
+                      className="flex h-11 w-full items-center justify-between rounded-xl bg-card px-3 text-left active:scale-[0.99]"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface text-[11px] text-primary">
+                          {badge}
+                        </span>
+                        <span>
+                          <span className="block text-[13px] font-extrabold text-foreground">
+                            {item}
+                          </span>
+                          <span className="block text-[10px] font-bold text-muted-foreground">
+                            {name}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="text-[11px] font-extrabold text-primary">선택</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </Section>
+
+      <Section title="네트워크">
+        <div className="flex flex-wrap gap-1.5">
+          {NETWORKS[asset].map((n) => (
+            <button
+              key={n}
+              onClick={() => setNetwork(n)}
+              className={`rounded-lg px-3 py-1.5 text-[12px] font-bold ${
+                network === n
+                  ? side === "buy"
+                    ? "bg-success-soft text-success"
+                    : "bg-destructive-soft text-destructive"
+                  : "bg-surface text-muted-foreground"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="가격 · 수량">
+        <div className="space-y-2">
+          <div className="grid grid-cols-[1fr_auto] gap-1.5">
+            <label className="rounded-xl border border-border bg-card px-3 py-2">
+              <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+                <span>{asset} 수량 입력</span>
+                <span>{side === "buy" ? "구매" : "판매"}</span>
+              </div>
+              <input
+                inputMode="decimal"
+                value={coinAmount}
+                onChange={(e) => recalcFiatFromCoin(e.target.value.replace(/[^\d.]/g, ""))}
+                placeholder={`${asset} 수량`}
+                className="num-tnum h-7 w-full bg-transparent text-[16px] font-extrabold text-foreground outline-none"
+              />
+            </label>
+            <div className="min-w-[108px] rounded-xl bg-surface px-3 py-2 text-right">
+              <div className="text-[10px] font-bold text-muted-foreground">예상 원화</div>
+              <div className="num-tnum h-7 text-[13px] font-extrabold text-foreground">
+                {totalFiat.toLocaleString("ko-KR")}
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-border bg-card px-3 py-2">
+            <div className="text-[10px] font-bold text-muted-foreground">참고 단가</div>
+            <div className="num-tnum h-7 text-[13px] font-extrabold text-foreground">
+              1 {asset} = {Number(price).toLocaleString("ko-KR")} KRW
+            </div>
+          </div>
+          <div className="rounded-2xl bg-surface p-2">
+            <div className="mb-1.5 text-[11px] font-semibold text-muted-foreground">주문 방식</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={setFullOrder}
+                className={`rounded-xl py-2 text-[12px] font-extrabold ${
+                  orderMode === "full"
+                    ? "bg-foreground text-background"
+                    : "bg-card text-muted-foreground"
+                }`}
+              >
+                전체 주문
+              </button>
+              <button
+                onClick={setPartialOrder}
+                className={`rounded-xl py-2 text-[12px] font-extrabold ${
+                  orderMode === "partial"
+                    ? "bg-foreground text-background"
+                    : "bg-card text-muted-foreground"
+                }`}
+              >
+                부분 주문 허용
+              </button>
+            </div>
+          </div>
+          {orderMode === "partial" && (
+            <div className="grid grid-cols-2 gap-2">
+              <NumField
+                label={`최소 주문 수량 (${asset})`}
+                value={minOrder}
+                onChange={setMinOrder}
+              />
+              <NumField
+                label={`최대 주문 수량 (${asset})`}
+                value={maxOrder}
+                onChange={setMaxOrder}
+              />
+            </div>
+          )}
+          {orderMode === "full" && (
+            <div className="rounded-xl bg-primary-soft px-3 py-2 text-[11px] font-bold text-primary">
+              전체 주문 모드: 주문자는 총 {coinAmount || 0} {asset}를 한 번에 거래합니다.
+            </div>
+          )}
         </div>
       </Section>
 
@@ -330,6 +511,36 @@ function NewOffer() {
   );
 }
 
+function OfferAssetActionButton({
+  label,
+  value,
+  active,
+  tone,
+  onClick,
+}: {
+  label: string;
+  value: OfferPickerAsset;
+  active: boolean;
+  tone: "success" | "destructive";
+  onClick: () => void;
+}) {
+  const activeTone =
+    tone === "success"
+      ? "bg-success text-success-foreground"
+      : "bg-destructive text-destructive-foreground";
+  return (
+    <button
+      onClick={onClick}
+      className={`flex h-10 items-center justify-center rounded-xl px-2 text-center text-[12px] font-extrabold ${active ? activeTone : "bg-foreground text-background"}`}
+    >
+      <span>{label}</span>
+      <span className="ml-1.5 rounded-full bg-background/15 px-1.5 py-0.5 text-[10px]">
+        {value}
+      </span>
+    </button>
+  );
+}
+
 function NumField({
   label,
   value,
@@ -340,13 +551,13 @@ function NumField({
   onChange: (v: string) => void;
 }) {
   return (
-    <label className="block">
-      <div className="mb-1 text-[11px] font-semibold text-muted-foreground">{label}</div>
+    <label className="rounded-xl border border-border bg-card px-3 py-2">
+      <div className="text-[10px] font-bold text-muted-foreground">{label}</div>
       <input
         inputMode="decimal"
         value={value}
         onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ""))}
-        className="num-tnum w-full rounded-xl bg-surface px-3 py-2.5 text-[14px] font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        className="num-tnum h-7 w-full bg-transparent text-[16px] font-extrabold text-foreground outline-none"
       />
     </label>
   );
