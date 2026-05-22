@@ -35,3 +35,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local agent/runtime notes
+.openclaw/
+AGENTS.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+*.broken-backup

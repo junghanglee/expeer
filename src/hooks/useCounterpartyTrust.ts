@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizePhone } from "@/utils/tradeApproval.functions";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Pick<
   Tables<"profiles">,
-  "id" | "nickname" | "email" | "kyc_status" | "trade_count" | "rating"
+  "id" | "nickname" | "email" | "phone" | "is_suspended" | "kyc_status" | "trade_count" | "rating"
 >;
 
 type Review = Tables<"reviews">;
@@ -29,7 +30,7 @@ export function useCounterpartyTrust(userId: string | undefined) {
       const [{ data: profileRow }, { data: reviewRows }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id,nickname,email,kyc_status,trade_count,rating")
+          .select("id,nickname,email,phone,is_suspended,kyc_status,trade_count,rating")
           .eq("id", userId)
           .maybeSingle(),
         supabase
@@ -55,10 +56,12 @@ export function useCounterpartyTrust(userId: string | undefined) {
   const reviewCount = reviews.length;
   const rating = Number(profile?.rating ?? 0);
   const blacklistStatus = useMemo(() => {
-    // TODO: 제휴 API 연동 시 10만+ 블랙리스트 DB 대조 결과로 교체.
-    // 현재는 온보딩/거래 제한에 걸린 계정 여부만 로컬 신호로 표시한다.
-    return profile?.kyc_status === "rejected" ? "attention" : "clear";
-  }, [profile?.kyc_status]);
+    // 추후 관리자 등록 블랙리스트 DB의 휴대폰 번호 대조 결과로 교체.
+    // 현재는 거래 필수값인 휴대폰 등록 여부와 계정 제한 상태를 우선 표시한다.
+    if (!normalizePhone(profile?.phone)) return "phone_required";
+    if (profile?.is_suspended || profile?.kyc_status === "rejected") return "blocked";
+    return "clear";
+  }, [profile?.phone, profile?.is_suspended, profile?.kyc_status]);
 
   return {
     profile,

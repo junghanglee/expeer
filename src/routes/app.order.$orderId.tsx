@@ -1,43 +1,30 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { CheckCircle2, FileText, Loader2, MessageCircle, ShieldAlert, Star } from "lucide-react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { AppHeader } from "@/components/espeer/AppHeader";
-import { OrderStatusStepper } from "@/components/espeer/OrderStatusStepper";
-import { CountdownTimer } from "@/components/espeer/CountdownTimer";
-import { CopyableField } from "@/components/espeer/CopyableField";
-import { BigNumber } from "@/components/espeer/BigNumber";
 import { Section } from "@/components/espeer/Section";
+import { BigNumber } from "@/components/espeer/BigNumber";
+import { CountdownTimer } from "@/components/espeer/CountdownTimer";
+import { OrderStatusStepper } from "@/components/espeer/OrderStatusStepper";
+import { CounterpartyTrustCard } from "@/components/espeer/CounterpartyTrustCard";
 import {
-  Loader2,
-  MessageCircle,
-  FileText,
-  ShieldAlert,
-  Check,
-  Star,
-  CheckCircle2,
-} from "lucide-react";
-import {
-  useOrder,
-  markOrderPaid,
   cancelOrder,
+  markOrderPaid,
   requestCancel,
+  useOrder,
   withdrawCancelRequest,
 } from "@/hooks/useOrders";
 import { useAuth } from "@/lib/auth";
-import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
 import { useOrderReviews } from "@/hooks/useReviews";
-import { EscrowPanel } from "@/components/espeer/EscrowPanel";
-import { networkToChain, type SupportedChain } from "@/lib/escrow";
 import { toast } from "sonner";
-import { useEvidencePackage as useEvidencePackageHook } from "@/hooks/useEvidencePackage";
-import { CounterpartyTrustCard } from "@/components/espeer/CounterpartyTrustCard";
+import { useState } from "react";
 
 const STATUS_LABEL: Record<string, string> = {
-  created: "결제 대기",
+  created: "대기 중",
   info_shared: "정보 공유",
-  paid: "송금 완료",
+  paid: "입금/전송 완료",
   proof_uploaded: "증빙 제출",
-  confirmed: "판매자 확인",
+  confirmed: "확인 중",
   released: "릴리즈 완료",
   completed: "거래 완료",
   cancelled: "취소됨",
@@ -50,55 +37,14 @@ export const Route = createFileRoute("/app/order/$orderId")({
   component: OrderDetail,
 });
 
-interface BankInfo {
-  role: "seller" | "buyer";
-  bank_name: string;
-  account_number: string;
-  account_holder: string;
-}
-
 function OrderDetail() {
   const { orderId } = Route.useParams();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { user } = useAuth();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { order, loading, refresh } = useOrder(orderId);
-  const [sellerBank, setSellerBank] = useState<BankInfo | null>(null);
-  const [buyerBank, setBuyerBank] = useState<BankInfo | null>(null);
-  const [bankLoadError, setBankLoadError] = useState(false);
-  const [buyerWalletAddress, setBuyerWalletAddress] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  // CRITICAL: hooks must be called unconditionally (before any early return)
   const { myReview } = useOrderReviews(order?.status === "completed" ? order.id : undefined);
-
-  useEffect(() => {
-    (async () => {
-      if (!order) return;
-      setSellerBank(null);
-      setBuyerBank(null);
-      setBankLoadError(false);
-      setBuyerWalletAddress(null);
-
-      const { data: bankRows, error: bankError } = await supabase.rpc("get_order_bank_accounts", {
-        _order_id: order.id,
-      });
-      if (bankError) {
-        setBankLoadError(true);
-      } else {
-        setSellerBank(bankRows?.find((row) => row.role === "seller") ?? null);
-        setBuyerBank(bankRows?.find((row) => row.role === "buyer") ?? null);
-      }
-
-      if (order.buyer_wallet_id) {
-        const { data } = await supabase
-          .from("wallets")
-          .select("address")
-          .eq("id", order.buyer_wallet_id)
-          .maybeSingle();
-        setBuyerWalletAddress(data?.address ?? null);
-      }
-    })();
-  }, [order]);
+  const [busy, setBusy] = useState(false);
 
   if (loading) {
     return (
@@ -109,6 +55,7 @@ function OrderDetail() {
       </PhoneShell>
     );
   }
+
   if (!order) {
     return (
       <PhoneShell hideTab>
@@ -118,70 +65,38 @@ function OrderDetail() {
     );
   }
 
-  // Child routes such as /app/order/$orderId/chat must render their own screen.
-  if (pathname !== `/app/order/${order.id}`) {
-    return <Outlet />;
-  }
+  if (pathname !== `/app/order/${order.id}`) return <Outlet />;
 
-  const isBuyer = user?.id === order.buyer_id;
+  const isDemo = order.id.startsWith("demo-order-");
+  const isBuyer = isDemo || user?.id === order.buyer_id;
   const isSeller = user?.id === order.seller_id;
+  const isCryptoSwap = order.ads?.kind === "crypto_swap";
   const counterpartId = isBuyer ? order.seller_id : isSeller ? order.buyer_id : undefined;
   const status = order.status;
-  const escrowChain: SupportedChain | null =
-    (order.chain as SupportedChain | null) ?? networkToChain(order.network);
-  const expiresMs = new Date(order.expires_at).getTime() - Date.now();
-  const remainSec = Math.max(0, Math.floor(expiresMs / 1000));
+  const remainSec = Math.max(
+    0,
+    Math.floor((new Date(order.expires_at).getTime() - Date.now()) / 1000),
+  );
+  const receiveAsset = isCryptoSwap ? order.ads?.to_asset : order.fiat;
+  const receiveAmount = isCryptoSwap
+    ? Number(order.ads?.to_amount ?? order.fiat_amount)
+    : Number(order.fiat_amount);
+  const myCancelRequested = isBuyer
+    ? order.buyer_cancel_requested_at
+    : order.seller_cancel_requested_at;
 
-  const doPaid = async () => {
-    setBusy(true);
-    try {
-      await markOrderPaid(order.id);
-      toast.success("입금 완료 처리됨");
-      refresh();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "오류");
-    } finally {
-      setBusy(false);
+  const run = async (fn: () => Promise<void>, ok: string) => {
+    if (isDemo) {
+      toast.success("테스트 주문에서는 화면 흐름만 확인합니다.");
+      return;
     }
-  };
-  // 릴리즈는 EscrowPanel(온체인)로만 수행. DB는 recordEscrowRelease가 갱신.
-
-  const doCancel = async () => {
     setBusy(true);
     try {
-      await cancelOrder(order.id);
-      toast.success("주문 취소됨");
+      await fn();
+      toast.success(ok);
       refresh();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "오류");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const doRequestCancel = async () => {
-    if (!isBuyer && !isSeller) return;
-    setBusy(true);
-    try {
-      await requestCancel(order.id, isBuyer ? "buyer" : "seller");
-      toast.success("취소 요청을 상대에게 보냈어요");
-      refresh();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "오류");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const doWithdrawCancel = async () => {
-    if (!isBuyer && !isSeller) return;
-    setBusy(true);
-    try {
-      await withdrawCancelRequest(order.id, isBuyer ? "buyer" : "seller");
-      toast.success("취소 요청을 철회했어요");
-      refresh();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "오류");
+      toast.error(e instanceof Error ? e.message : "처리 실패");
     } finally {
       setBusy(false);
     }
@@ -189,16 +104,31 @@ function OrderDetail() {
 
   return (
     <PhoneShell hideTab>
-      <AppHeader title={`주문 #${order.id.slice(-4)}`} subtitle={STATUS_LABEL[status]} />
+      <AppHeader
+        title={`주문 #${order.id.slice(-4)}`}
+        subtitle={`${isCryptoSwap ? "P2P교환" : "P2P환전"} · ${STATUS_LABEL[status] ?? status}`}
+      />
       <OrderStatusStepper status={status} />
 
-      <div className="px-5">
+      {isDemo && (
+        <div className="px-5 pt-3">
+          <div className="rounded-2xl border border-success bg-success-soft p-3 text-[12px] font-semibold leading-relaxed text-success">
+            테스트 주문입니다. 실제 DB 저장 없이 상세·채팅·증빙·분쟁 흐름을 확인할 수 있습니다.
+          </div>
+        </div>
+      )}
+
+      <div className="px-5 pt-3">
         <BigNumber
-          value={`${Number(order.amount).toLocaleString("ko-KR", { maximumFractionDigits: 4 })}`}
+          value={Number(order.amount).toLocaleString("ko-KR", { maximumFractionDigits: 6 })}
           unit={order.asset}
           size="xl"
           tone="primary"
-          caption={`${Number(order.fiat_amount).toLocaleString("ko-KR")} ${order.fiat} · ${order.network}`}
+          caption={
+            isCryptoSwap
+              ? `받을 수량 ${receiveAmount.toLocaleString("ko-KR", { maximumFractionDigits: 6 })} ${receiveAsset} · ${order.network}`
+              : `${Number(order.fiat_amount).toLocaleString("ko-KR")} ${order.fiat} · ${order.network}`
+          }
         />
       </div>
 
@@ -210,155 +140,48 @@ function OrderDetail() {
         fiat={order.fiat}
         fiatAmount={Number(order.fiat_amount)}
         remainSec={remainSec}
+        isCryptoSwap={isCryptoSwap}
+        receiveAsset={receiveAsset ?? order.fiat}
+        receiveAmount={receiveAmount}
       />
 
       <CounterpartyTrustCard userId={counterpartId} />
 
-      {/* 수수료 내역 */}
-      <Section title="수수료 내역">
+      <Section title="수수료 안내">
         <div className="rounded-2xl border border-border bg-card p-3 text-[12px]">
           <FeeRow
-            label={`매수자 수수료 (${Number(order.buyer_fee_pct)}%)`}
+            label={`참여자 수수료 (${Number(order.buyer_fee_pct)}%)`}
             value={`${((Number(order.amount) * Number(order.buyer_fee_pct)) / 100).toLocaleString("ko-KR", { maximumFractionDigits: 6 })} ${order.asset}`}
             highlight={isBuyer}
           />
           <FeeRow
-            label={`매도자 수수료 (${Number(order.seller_fee_pct)}%)`}
+            label={`오퍼 등록자 수수료 (${Number(order.seller_fee_pct)}%)`}
             value={`${((Number(order.amount) * Number(order.seller_fee_pct)) / 100).toLocaleString("ko-KR", { maximumFractionDigits: 6 })} ${order.asset}`}
             highlight={isSeller}
           />
-          <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[11px] font-bold text-foreground">
-            <span>거래 수량</span>
-            <span className="num-display">
-              {Number(order.amount).toLocaleString("ko-KR", { maximumFractionDigits: 4 })}{" "}
-              {order.asset}
-            </span>
-          </div>
           <div className="mt-2 rounded-lg bg-surface px-2 py-1.5 text-[11px] font-semibold leading-relaxed text-muted-foreground">
-            EXPEER 수수료는 현금이 아니라 거래 코인 기준으로 계산됩니다. 플랫폼은 현금과 코인을
-            보관하지 않습니다.
+            EXPEER는 현금과 코인을 보관하지 않습니다. 수수료는 거래 코인 기준으로 계산됩니다.
           </div>
         </div>
       </Section>
 
-      {/* 송금 정보 — 매수자 */}
-      {isBuyer && (status === "created" || status === "info_shared") && sellerBank && (
-        <Section
-          title="이 계좌로 송금해 주세요"
-          action={remainSec > 0 ? <CountdownTimer totalSec={remainSec} /> : undefined}
-        >
-          <div className="rounded-2xl border border-primary bg-primary-soft p-4">
-            <div className="space-y-2">
-              <CopyableField label="은행" value={sellerBank.bank_name} mono={false} />
-              <CopyableField label="계좌번호" value={sellerBank.account_number} big />
-              <CopyableField label="예금주" value={sellerBank.account_holder} mono={false} />
-              <CopyableField
-                label="입금 금액"
-                value={`${Number(order.fiat_amount).toLocaleString("ko-KR")} ${order.fiat}`}
-                big
-              />
-            </div>
-          </div>
-          {buyerBank && (
-            <div className="mt-3 rounded-xl bg-warning-soft px-3 py-2 text-[12px] font-medium text-warning-foreground">
-              반드시{" "}
-              <b>
-                {buyerBank.bank_name} {buyerBank.account_number}
-              </b>{" "}
-              ({buyerBank.account_holder}) 계좌에서 송금해 주세요.
-            </div>
-          )}
-        </Section>
-      )}
-
-      {isBuyer && (status === "created" || status === "info_shared") && !sellerBank && (
-        <Section title="이 계좌로 송금해 주세요">
-          <div className="rounded-2xl border border-warning/40 bg-warning-soft px-4 py-3 text-[12px] font-semibold leading-relaxed text-warning-foreground">
-            {bankLoadError
-              ? "판매자 계좌 조회 RPC가 아직 Supabase에 적용되지 않았어요. manual-fixes SQL을 적용하면 계좌번호가 표시됩니다."
-              : "판매자 계좌 정보를 불러오는 중입니다."}
-          </div>
-        </Section>
-      )}
-
-      {/* 매도자 안내 */}
-      {isSeller && (status === "created" || status === "info_shared") && (
+      {status === "disputed" && (
         <Section>
-          <div className="rounded-2xl border border-border bg-card p-6 text-center">
-            <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
-            <div className="mt-3 text-[14px] font-bold text-foreground">매수자 송금 대기 중</div>
-            <div className="mt-1 text-[12px] text-muted-foreground">
-              매수자가 입금을 완료하면 알림이 도착합니다.
+          <div className="rounded-2xl border border-destructive bg-destructive-soft p-4">
+            <div className="flex items-center gap-2 text-[14px] font-extrabold text-destructive">
+              <ShieldAlert className="h-5 w-5" /> 분쟁/자료 보존 진행 중
             </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-foreground">
+              채팅, 증빙, 주문 기록을 보존하고 제출용 자료를 준비합니다.
+            </p>
           </div>
         </Section>
       )}
 
-      {(status === "paid" || status === "proof_uploaded" || status === "confirmed") && (
+      {(status === "completed" || status === "released") && (
         <Section>
-          <div className="rounded-2xl border border-border bg-card p-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft">
-              <span className="h-3 w-3 rounded-full bg-primary pulse-dot" />
-            </div>
-            <div className="mt-3 text-[15px] font-bold text-foreground">
-              {isSeller ? "입금을 확인해 주세요" : "판매자가 입금을 확인 중이에요"}
-            </div>
-            <div className="mt-1 text-[12px] text-muted-foreground">
-              확인 후 코인이 자동으로 매수자 지갑으로 전송됩니다.
-            </div>
-          </div>
-        </Section>
-      )}
-
-      {/* 온체인 에스크로 패널 — 판매자에게만 노출 (lock/release/refund 컨트롤) */}
-      {isSeller &&
-        escrowChain &&
-        buyerWalletAddress &&
-        status !== "completed" &&
-        status !== "cancelled" &&
-        status !== "expired" && (
-          <Section title="온체인 에스크로">
-            <EscrowPanel
-              orderId={order.id}
-              chain={escrowChain}
-              asset={order.asset}
-              amount={Number(order.amount)}
-              buyerWallet={buyerWalletAddress}
-              escrowStatus={order.escrow_status}
-              lockTxHash={order.escrow_lock_tx_hash}
-              releaseTxHash={order.escrow_release_tx_hash}
-              expiresAt={order.expires_at}
-              onChange={refresh}
-            />
-          </Section>
-        )}
-      {isSeller &&
-        (!escrowChain || !buyerWalletAddress) &&
-        status !== "completed" &&
-        status !== "cancelled" && (
-          <Section title="온체인 에스크로">
-            <div className="rounded-2xl border border-warning/30 bg-warning/10 p-3 text-[12px] text-warning-foreground">
-              {!escrowChain && (
-                <p>
-                  이 주문의 네트워크({order.network})는 아직 온체인 에스크로를 지원하지 않습니다.
-                </p>
-              )}
-              {escrowChain && !buyerWalletAddress && (
-                <p>매수자 지갑 주소가 등록되지 않아 락업할 수 없습니다.</p>
-              )}
-            </div>
-          </Section>
-        )}
-
-      {(status === "released" || status === "completed") && (
-        <Section>
-          <div className="rounded-2xl border border-success bg-success-soft p-6 text-center anim-scale-in">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success text-success-foreground">
-              <Check className="h-8 w-8" strokeWidth={3} />
-            </div>
-            <div className="mt-3 text-[16px] font-extrabold text-foreground">
-              거래가 완료되었어요
-            </div>
+          <div className="rounded-2xl border border-success bg-success-soft p-5 text-center text-[15px] font-extrabold text-foreground">
+            거래가 완료되었습니다.
           </div>
           {status === "completed" && (isBuyer || isSeller) && (
             <Link
@@ -367,30 +190,20 @@ function OrderDetail() {
               className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-warning bg-warning-soft py-3 text-[13px] font-bold text-warning-foreground"
             >
               <Star className={`h-4 w-4 ${myReview ? "fill-warning text-warning" : ""}`} />
-              {myReview ? "내가 남긴 평가 보기" : `${isBuyer ? "판매자" : "매수자"} 평가 작성`}
+              {myReview ? "내가 남긴 평가 보기" : "상대방 평가 남기기"}
             </Link>
           )}
         </Section>
       )}
 
-      {status === "disputed" && (
-        <Section>
-          <DisputedNotice orderId={order.id} />
-        </Section>
-      )}
-
-      {/* 양측 취소 합의 진행 상태 */}
       {(order.buyer_cancel_requested_at || order.seller_cancel_requested_at) &&
         status !== "cancelled" && (
           <Section>
             <div className="rounded-2xl border border-warning bg-warning-soft p-4 text-[13px] text-foreground">
               <div className="font-bold">취소 합의 진행 중</div>
-              <ul className="mt-2 space-y-1 text-[12px]">
-                <li>매수자 동의: {order.buyer_cancel_requested_at ? "✓ 완료" : "대기"}</li>
-                <li>매도자 동의: {order.seller_cancel_requested_at ? "✓ 완료" : "대기"}</li>
-              </ul>
-              <div className="mt-2 text-[11px] text-muted-foreground">
-                양측 모두 동의하면 자동으로 취소됩니다.
+              <div className="mt-2 text-[12px]">
+                구매자 동의: {order.buyer_cancel_requested_at ? "완료" : "대기"} · 판매자 동의:{" "}
+                {order.seller_cancel_requested_at ? "완료" : "대기"}
               </div>
             </div>
           </Section>
@@ -403,7 +216,7 @@ function OrderDetail() {
             params={{ orderId }}
             className="flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-3 text-[13px] font-bold text-foreground"
           >
-            <FileText className="h-4 w-4" /> 입금증
+            <FileText className="h-4 w-4" /> 증빙
           </Link>
           <Link
             to="/app/order/$orderId/chat"
@@ -421,73 +234,71 @@ function OrderDetail() {
         {isBuyer && (status === "created" || status === "info_shared") && (
           <button
             disabled={busy}
-            onClick={doPaid}
+            onClick={() =>
+              run(
+                () => markOrderPaid(order.id),
+                isCryptoSwap ? "전송 준비 완료 처리" : "입금 완료 처리",
+              )
+            }
             className="block w-full rounded-xl bg-primary py-3.5 text-center text-[15px] font-bold text-primary-foreground disabled:opacity-50"
           >
-            입금 완료 표시
+            {isCryptoSwap ? "전송 준비 완료 표시" : "입금 완료 표시"}
           </button>
         )}
-        {isSeller &&
-          (status === "paid" || status === "proof_uploaded" || status === "confirmed") && (
-            <div className="rounded-xl bg-primary-soft px-3 py-2.5 text-center text-[12px] font-semibold text-primary">
-              ⬆ 위 「온체인 에스크로」 패널에서 “구매자에게 지급” 버튼으로 릴리즈하세요
-            </div>
-          )}
         {(status === "created" || status === "info_shared") && (isBuyer || isSeller) && (
           <button
             disabled={busy}
-            onClick={doCancel}
+            onClick={() => run(() => cancelOrder(order.id), "주문 취소됨")}
             className="block w-full rounded-xl border border-border bg-card py-2.5 text-center text-[13px] font-semibold text-muted-foreground"
           >
-            주문 취소 (입금 전)
+            주문 취소
           </button>
         )}
         {(status === "paid" || status === "proof_uploaded" || status === "confirmed") &&
           (isBuyer || isSeller) &&
-          (() => {
-            const myReq = isBuyer
-              ? order.buyer_cancel_requested_at
-              : order.seller_cancel_requested_at;
-            return myReq ? (
-              <button
-                disabled={busy}
-                onClick={doWithdrawCancel}
-                className="block w-full rounded-xl border border-border bg-card py-2.5 text-center text-[13px] font-semibold text-muted-foreground"
-              >
-                취소 요청 철회
-              </button>
-            ) : (
-              <button
-                disabled={busy}
-                onClick={doRequestCancel}
-                className="block w-full rounded-xl border border-warning bg-warning-soft py-2.5 text-center text-[13px] font-semibold text-warning-foreground"
-              >
-                상대에게 취소 합의 요청
-              </button>
-            );
-          })()}
-        {(status === "completed" ||
-          status === "released" ||
-          status === "cancelled" ||
-          status === "expired") && (
+          (myCancelRequested ? (
+            <button
+              disabled={busy}
+              onClick={() =>
+                run(
+                  () => withdrawCancelRequest(order.id, isBuyer ? "buyer" : "seller"),
+                  "취소 요청을 철회했습니다",
+                )
+              }
+              className="block w-full rounded-xl border border-border bg-card py-2.5 text-center text-[13px] font-semibold text-muted-foreground"
+            >
+              취소 요청 철회
+            </button>
+          ) : (
+            <button
+              disabled={busy}
+              onClick={() =>
+                run(
+                  () => requestCancel(order.id, isBuyer ? "buyer" : "seller"),
+                  "취소 요청을 보냈습니다",
+                )
+              }
+              className="block w-full rounded-xl border border-warning bg-warning-soft py-2.5 text-center text-[13px] font-semibold text-warning-foreground"
+            >
+              상대방에게 취소 합의 요청
+            </button>
+          ))}
+        {(status === "paid" || status === "proof_uploaded" || isDemo) && (
+          <Link
+            to="/app/order/$orderId/dispute"
+            params={{ orderId }}
+            className="block text-center text-[12px] font-semibold text-destructive"
+          >
+            문제가 있나요? 자료 보존 신청
+          </Link>
+        )}
+        {["completed", "released", "cancelled", "expired"].includes(status) && (
           <button
             onClick={() => navigate({ to: "/app/orders" })}
             className="block w-full rounded-xl bg-surface py-3 text-center text-[13px] font-bold text-foreground"
           >
             주문 내역으로
           </button>
-        )}
-        {(status === "created" ||
-          status === "info_shared" ||
-          status === "paid" ||
-          status === "proof_uploaded") && (
-          <Link
-            to="/app/order/$orderId/dispute"
-            params={{ orderId }}
-            className="block text-center text-[12px] font-semibold text-destructive"
-          >
-            문제가 있나요? 분쟁 신청
-          </Link>
         )}
       </div>
     </PhoneShell>
@@ -502,6 +313,9 @@ function NextActionCard({
   fiat,
   fiatAmount,
   remainSec,
+  isCryptoSwap,
+  receiveAsset,
+  receiveAmount,
 }: {
   status: string;
   isBuyer: boolean;
@@ -510,55 +324,58 @@ function NextActionCard({
   fiat: string;
   fiatAmount: number;
   remainSec: number;
+  isCryptoSwap: boolean;
+  receiveAsset: string;
+  receiveAmount: number;
 }) {
-  let title = "거래 상태 확인";
-  let desc = "아래 거래 정보와 채팅을 확인해 주세요.";
-  let items = ["거래 내용 확인", "상대방 안내 확인"];
+  const receiveText = isCryptoSwap
+    ? `${receiveAmount.toLocaleString("ko-KR", { maximumFractionDigits: 6 })} ${receiveAsset}`
+    : `${fiatAmount.toLocaleString("ko-KR")} ${fiat}`;
+  let title = isCryptoSwap ? "교환 조건 확인" : "거래 상태 확인";
+  let desc = isCryptoSwap
+    ? `${asset}를 전송하고 ${receiveText}를 받는 교환 주문입니다.`
+    : "거래 내용을 확인하고 다음 단계를 진행해 주세요.";
+  let items = isCryptoSwap
+    ? ["양측 지갑 주소 확인", "전송/수령 조건 확인", "문제 발생 시 증빙 보존"]
+    : ["거래 내용 확인", "상대방 상태 확인"];
 
-  if (isBuyer && (status === "created" || status === "info_shared")) {
+  if (!isCryptoSwap && isBuyer && (status === "created" || status === "info_shared")) {
     title = "지금 해야 할 일: 입금하기";
-    desc = `${fiatAmount.toLocaleString("ko-KR")} ${fiat}를 판매자 계좌로 보낸 뒤, 아래의 입금 완료 버튼을 누르세요.`;
+    desc = `${receiveText}를 판매자 계좌로 보낸 뒤 입금 완료 버튼을 눌러주세요.`;
     items = ["입금 계좌와 예금주 확인", "본인 명의 계좌로 송금", "입금 완료 버튼 누르기"];
-  } else if (isSeller && (status === "created" || status === "info_shared")) {
-    title = "지금 해야 할 일: 구매자 입금 대기";
-    desc = `구매자가 입금 완료를 누를 때까지 기다리세요. ${asset}는 에스크로 상태를 먼저 확인해야 합니다.`;
-    items = ["코인 락업 상태 확인", "구매자 입금 알림 대기", "채팅 요청 확인"];
-  } else if (
-    isSeller &&
-    (status === "paid" || status === "proof_uploaded" || status === "confirmed")
-  ) {
-    title = "지금 해야 할 일: 입금 확인";
-    desc =
-      "은행 앱에서 실제 입금자명과 금액을 확인한 뒤, 온체인 에스크로에서 구매자에게 지급하세요.";
-    items = ["은행 앱에서 입금 확인", "입금자명/금액 일치 확인", "구매자에게 코인 지급"];
-  } else if (
-    isBuyer &&
-    (status === "paid" || status === "proof_uploaded" || status === "confirmed")
-  ) {
-    title = "지금 해야 할 일: 판매자 확인 대기";
-    desc = "판매자가 입금 내역을 확인 중입니다. 문제가 있으면 채팅 또는 분쟁 신청을 이용하세요.";
-    items = ["채팅 알림 확인", "입금증 보관", "필요 시 분쟁 신청"];
+  } else if (!isCryptoSwap && isSeller && (status === "created" || status === "info_shared")) {
+    title = "구매자 입금 대기";
+    desc = `구매자의 입금 완료 표시를 기다리고 ${asset} 릴리즈 준비 상태를 확인하세요.`;
+    items = ["코인 보유 상태 확인", "구매자 입금 알림 대기", "채팅 요청 확인"];
+  } else if (!isCryptoSwap && status === "paid") {
+    title = isBuyer ? "판매자가 입금을 확인 중" : "입금 확인 필요";
+    desc = isBuyer
+      ? "판매자가 입금 내역을 확인한 뒤 코인을 릴리즈합니다."
+      : "입금자명과 금액을 확인한 뒤 코인을 릴리즈해 주세요.";
+    items = isBuyer
+      ? ["채팅 알림 확인", "증빙 보존", "판매자 확인 대기"]
+      : ["입금자명 확인", "금액 확인", "코인 릴리즈"];
   } else if (status === "disputed") {
     title = "자료 보존 상태";
-    desc = "필요하면 제출용 거래 자료를 다운로드하고, 채팅/입금증/온체인 기록을 보존하세요.";
-    items = ["제출용 자료 다운로드", "채팅·입금증 확인", "은행/수사기관 제출 준비"];
+    desc = "거래 자료를 보존하고 제출용 증빙을 준비합니다.";
+    items = ["거래 자료 다운로드", "채팅·증빙 확인", "은행·수사기관 제출 준비"];
   } else if (status === "released" || status === "completed") {
     title = "거래 완료";
-    desc = "거래가 완료되었습니다. 상대방 평가를 남기면 다음 거래자의 판단에 도움이 됩니다.";
-    items = ["수령/지급 내역 확인", "상대방 평가", "평판 반영"];
+    desc = "거래가 완료되었습니다. 평가를 남기면 다음 거래에 도움이 됩니다.";
+    items = ["수령/지급 내역 확인", "상대방 평가", "피드백 반영"];
   }
 
   return (
     <Section
       title="지금 해야 할 일"
-      action={remainSec > 0 ? <CountdownTimer totalSec={remainSec} /> : undefined}
+      action={remainSec > 0 && !isCryptoSwap ? <CountdownTimer totalSec={remainSec} /> : undefined}
     >
       <div className="rounded-2xl border border-primary bg-primary-soft p-4">
         <div className="flex items-start gap-2">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <CheckCircle2 className="h-4 w-4" />
           </div>
-          <div className="min-w-0">
+          <div>
             <div className="text-[14px] font-extrabold text-foreground">{title}</div>
             <p className="mt-1 text-[12px] leading-relaxed text-foreground/75">{desc}</p>
           </div>
@@ -601,54 +418,6 @@ function FeeRow({
         )}
       </span>
       <span className="num-display">{value}</span>
-    </div>
-  );
-}
-
-function DisputedNotice({ orderId }: { orderId: string }) {
-  const { download, loading } = useEvidencePackageHook();
-  return (
-    <div className="space-y-3">
-      <div className="rounded-2xl border border-destructive bg-destructive-soft p-5">
-        <div className="flex items-center gap-2 text-[14px] font-extrabold text-destructive">
-          <ShieldAlert className="h-5 w-5" /> 분쟁(자료 보존) 진행 중
-        </div>
-        <p className="mt-2 text-[12px] leading-relaxed text-foreground">
-          EXPEER는 비수탁 P2P 중개 플랫폼으로, 분쟁을 직접 중재·판정하지 않습니다. 1차 해결 책임은
-          거래 당사자에게 있으며, EXPEER는 보존된 자료를 제공하는 역할만 수행합니다.
-        </p>
-      </div>
-
-      <div className="rounded-2xl border border-warning bg-warning-soft p-4 text-[12px] leading-relaxed text-foreground">
-        <div className="font-extrabold text-warning">예외 — arbiter 최후수단 안내</div>
-        <p className="mt-1">
-          판매자가 입금을 명시적으로 확인했음에도 부당하게 코인 지급을 거부한 경우에 한해, 보존된
-          자료에 근거하여 EXPEER가 운영하는 멀티시그(arbiter)가 컨트랙트 자금을 정산할 수 있습니다.
-          이는 자동 보장이 아니며, 입금자명·금액·채팅 기록·온체인 이벤트가 일관되게 입증될 때만
-          적용됩니다.
-        </p>
-      </div>
-
-      <div className="rounded-2xl border border-border bg-card p-4 text-[12px] text-foreground">
-        <div className="font-bold">제출용 자료에 포함되는 항목</div>
-        <ul className="mt-2 space-y-1 text-muted-foreground">
-          <li>• POLICY.txt — EXPEER 분쟁 처리 정책</li>
-          <li>• summary.json — 주문/당사자 요약 (개인정보 마스킹)</li>
-          <li>• chat.txt / messages.json — 채팅 로그 전체</li>
-          <li>• payment_proofs.json — 송금 증빙 메타데이터</li>
-          <li>• transfers.json — 온체인 이체 내역</li>
-          <li>• chain_events.json — 에스크로 컨트랙트 트랜잭션 해시</li>
-          <li>• disputes.json — 자료 보존 신청 이력</li>
-        </ul>
-        <button
-          onClick={() => download(orderId)}
-          disabled={loading}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary-soft py-2.5 text-[12px] font-bold text-primary disabled:opacity-50"
-        >
-          <FileText className="h-4 w-4" />
-          {loading ? "자료 생성 중..." : "제출용 거래 자료 (.zip) 다운로드"}
-        </button>
-      </div>
     </div>
   );
 }

@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { Check, Star } from "lucide-react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { AppHeader } from "@/components/espeer/AppHeader";
 import { Section } from "@/components/espeer/Section";
-import { Star, Check } from "lucide-react";
-import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useOrder } from "@/hooks/useOrders";
-import { useOrderReviews, submitReview } from "@/hooks/useReviews";
+import { submitReview, useOrderReviews } from "@/hooks/useReviews";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/order/$orderId/review")({
@@ -28,7 +28,7 @@ function ReviewPage() {
     return (
       <PhoneShell hideTab>
         <AppHeader title="리뷰 작성" />
-        <div className="px-5 py-8 text-center text-muted-foreground">로딩 중...</div>
+        <div className="px-5 py-8 text-center text-muted-foreground">로딩 중…</div>
       </PhoneShell>
     );
   }
@@ -50,7 +50,7 @@ function ReviewPage() {
       <PhoneShell hideTab>
         <AppHeader title="리뷰 작성" />
         <div className="px-5 py-8 text-center text-muted-foreground">
-          거래 당사자만 작성할 수 있습니다.
+          거래 당사자만 리뷰를 작성할 수 있습니다.
         </div>
       </PhoneShell>
     );
@@ -66,8 +66,10 @@ function ReviewPage() {
     );
   }
 
+  const isCryptoSwap = order.ads?.kind === "crypto_swap";
   const revieweeId = isBuyer ? order.seller_id : order.buyer_id;
-  const revieweeRole = isBuyer ? "판매자" : "매수자";
+  const revieweeRole = isBuyer ? "오퍼 등록자" : "참여자";
+  const tradeLabel = isCryptoSwap ? "교환" : "환전";
 
   const submit = async () => {
     setSubmitting(true);
@@ -84,7 +86,7 @@ function ReviewPage() {
       navigate({ to: "/app/order/$orderId", params: { orderId } });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "오류";
-      toast.error(msg.includes("duplicate") ? "이미 리뷰를 작성하셨습니다" : msg);
+      toast.error(msg.includes("duplicate") ? "이미 리뷰를 작성했습니다" : msg);
     } finally {
       setSubmitting(false);
     }
@@ -92,7 +94,10 @@ function ReviewPage() {
 
   return (
     <PhoneShell hideTab>
-      <AppHeader title={`${revieweeRole} 평가`} subtitle={`#${orderId.slice(-4)}`} />
+      <AppHeader
+        title={`${revieweeRole} 평가`}
+        subtitle={`${tradeLabel} 주문 #${orderId.slice(-4)}`}
+      />
 
       {myReview ? (
         <Section>
@@ -110,7 +115,7 @@ function ReviewPage() {
               ))}
             </div>
             {myReview.comment && (
-              <div className="mt-2 text-[12px] text-muted-foreground">"{myReview.comment}"</div>
+              <div className="mt-2 text-[12px] text-muted-foreground">“{myReview.comment}”</div>
             )}
           </div>
         </Section>
@@ -121,9 +126,7 @@ function ReviewPage() {
               {[1, 2, 3, 4, 5].map((n) => (
                 <button key={n} onClick={() => setRating(n)} aria-label={`${n}점`}>
                   <Star
-                    className={`h-9 w-9 transition ${
-                      n <= rating ? "fill-warning text-warning" : "text-muted-foreground"
-                    }`}
+                    className={`h-9 w-9 transition ${n <= rating ? "fill-warning text-warning" : "text-muted-foreground"}`}
                   />
                 </button>
               ))}
@@ -138,7 +141,7 @@ function ReviewPage() {
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               maxLength={300}
-              placeholder="거래 경험을 짧게 남겨주세요"
+              placeholder={`${tradeLabel} 거래 경험을 짧게 남겨주세요`}
               className="h-28 w-full resize-none rounded-2xl bg-surface p-3.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <div className="mt-1 text-right text-[11px] text-muted-foreground">
@@ -153,14 +156,14 @@ function ReviewPage() {
               disabled={submitting}
               className="block w-full rounded-xl bg-primary py-3.5 text-center text-[15px] font-bold text-primary-foreground disabled:opacity-50"
             >
-              {submitting ? "제출 중..." : "리뷰 등록"}
+              {submitting ? "제출 중…" : "리뷰 등록"}
             </button>
           </div>
         </>
       )}
 
       {counterpartReview && (
-        <Section title={`상대방이 남긴 평가`}>
+        <Section title="상대방이 남긴 평가">
           <div className="rounded-2xl border border-border bg-card p-4">
             <div className="flex gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -171,7 +174,7 @@ function ReviewPage() {
               ))}
             </div>
             {counterpartReview.comment && (
-              <div className="mt-2 text-[13px] text-foreground">"{counterpartReview.comment}"</div>
+              <div className="mt-2 text-[13px] text-foreground">“{counterpartReview.comment}”</div>
             )}
           </div>
         </Section>

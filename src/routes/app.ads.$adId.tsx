@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Loader2, Shield, Clock } from "lucide-react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { AppHeader } from "@/components/espeer/AppHeader";
 import { Section, InfoRow } from "@/components/espeer/Section";
 import { BigNumber } from "@/components/espeer/BigNumber";
-import { Loader2, Shield, Clock } from "lucide-react";
 import { useOffer } from "@/hooks/useOffers";
-import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -15,10 +15,17 @@ export const Route = createFileRoute("/app/ads/$adId")({
 });
 
 function fmtKrw(n: number) {
-  return "₩" + Math.round(n).toLocaleString("ko-KR");
+  return `₩${Math.round(n).toLocaleString("ko-KR")}`;
 }
 function fmtNum(n: number) {
   return n.toLocaleString("ko-KR", { maximumFractionDigits: 4 });
+}
+function paymentLabel(method: string) {
+  if (method === "bank_transfer") return "계좌이체";
+  if (method === "toss") return "토스";
+  if (method === "kakao_pay") return "카카오페이";
+  if (method === "onchain") return "온체인";
+  return method;
 }
 
 function OfferDetail() {
@@ -50,7 +57,7 @@ function OfferDetail() {
   if (!offer) {
     return (
       <PhoneShell hideTab>
-        <AppHeader title="오퍼를 찾을 수 없어요" />
+        <AppHeader title="오퍼를 찾을 수 없음" />
         <div className="p-8 text-center text-[13px] text-muted-foreground">
           존재하지 않거나 비활성화된 오퍼입니다.
         </div>
@@ -71,7 +78,7 @@ function OfferDetail() {
           </div>
           <div className="flex-1">
             <div className="text-[15px] font-bold text-foreground">
-              {seller?.nickname ?? "익명"}
+              {seller?.nickname ?? "사용자"}
             </div>
             <div className="mt-0.5 text-[11px] text-muted-foreground">
               거래 {seller?.trade_count ?? 0}건 · 평점 {Number(seller?.rating ?? 0).toFixed(1)}
@@ -79,9 +86,7 @@ function OfferDetail() {
             </div>
           </div>
           <span
-            className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
-              isSell ? "bg-destructive-soft text-destructive" : "bg-success-soft text-success"
-            }`}
+            className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${isSell ? "bg-destructive-soft text-destructive" : "bg-success-soft text-success"}`}
           >
             {isSell ? "판매" : "구매"}
           </span>
@@ -113,18 +118,12 @@ function OfferDetail() {
           />
           <div className="h-px bg-border" />
           <InfoRow
-            label="결제수단"
+            label="결제 방법"
             value={
               <span className="flex flex-wrap justify-end gap-1">
                 {offer.payment_methods.map((b) => (
                   <span key={b} className="rounded bg-surface-strong px-1.5 py-0.5 text-[11px]">
-                    {b === "bank_transfer"
-                      ? "계좌이체"
-                      : b === "toss"
-                        ? "토스"
-                        : b === "kakao_pay"
-                          ? "카카오페이"
-                          : b}
+                    {paymentLabel(b)}
                   </span>
                 ))}
               </span>
@@ -144,20 +143,21 @@ function OfferDetail() {
       </Section>
 
       {offer.terms && (
-        <Section title="판매자 안내">
-          <div className="rounded-xl bg-warning-soft px-3 py-2 text-[12px] font-medium text-warning-foreground whitespace-pre-wrap">
+        <Section title="오퍼 안내">
+          <div className="whitespace-pre-wrap rounded-xl bg-warning-soft px-3 py-2 text-[12px] font-medium text-warning-foreground">
             {offer.terms}
           </div>
         </Section>
       )}
 
-      <Section title="안내">
+      <Section title="안전 안내">
         <ul className="space-y-2 rounded-2xl border border-border bg-card p-4 text-[13px]">
           <li className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-primary" /> 매칭 시 컨트랙트가 자동 락업
+            <Shield className="h-4 w-4 text-primary" /> 거래방 밖의 외부 연락이나 별도 입금 요청은
+            피하세요.
           </li>
           <li className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-primary" /> 본인 명의 계좌만 사용 가능
+            <Shield className="h-4 w-4 text-primary" /> 본인 명의 계좌와 등록 지갑만 사용해 주세요.
           </li>
         </ul>
       </Section>

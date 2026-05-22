@@ -1,14 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
+import { Loader2, Plus, ArrowRight } from "lucide-react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { AppHeader } from "@/components/espeer/AppHeader";
 import { useState } from "react";
-import { Loader2, Plus, ArrowRight } from "lucide-react";
 import { useOffers, type OfferSide } from "@/hooks/useOffers";
 
-const search = z.object({
-  side: z.enum(["sell", "buy"]).optional(),
-});
+const search = z.object({ side: z.enum(["sell", "buy"]).optional() });
 
 export const Route = createFileRoute("/app/ads")({
   validateSearch: search,
@@ -17,27 +15,34 @@ export const Route = createFileRoute("/app/ads")({
 });
 
 function fmtKrw(n: number) {
-  return "₩" + Math.round(n).toLocaleString("ko-KR");
+  return `₩${Math.round(n).toLocaleString("ko-KR")}`;
 }
 function fmtNum(n: number) {
   return n.toLocaleString("ko-KR", { maximumFractionDigits: 4 });
+}
+function paymentLabel(method: string) {
+  if (method === "bank_transfer") return "계좌이체";
+  if (method === "toss") return "토스";
+  if (method === "kakao_pay") return "카카오페이";
+  if (method === "onchain") return "온체인";
+  return method;
 }
 
 function OfferBoard() {
   const initial = Route.useSearch();
   const [side, setSide] = useState<OfferSide>(initial.side ?? "sell");
   const [asset, setAsset] = useState<string>("ALL");
-
   const { offers, loading } = useOffers({
     side,
     asset: asset === "ALL" ? undefined : asset,
+    fiat: "KRW",
   });
 
   return (
     <PhoneShell>
       <AppHeader
         title="오퍼 보드"
-        subtitle="활성 오퍼만 노출"
+        subtitle="P2P환전 오퍼를 빠르게 확인"
         right={
           <Link
             to="/app/selling/new"
@@ -52,19 +57,15 @@ function OfferBoard() {
         <div className="flex rounded-xl bg-surface p-1">
           <button
             onClick={() => setSide("sell")}
-            className={`flex-1 rounded-lg py-2 text-[13px] font-bold transition ${
-              side === "sell" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
-            }`}
+            className={`flex-1 rounded-lg py-2 text-[13px] font-bold transition ${side === "sell" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
           >
-            사기 (판매 오퍼)
+            사기 좋은 오퍼
           </button>
           <button
             onClick={() => setSide("buy")}
-            className={`flex-1 rounded-lg py-2 text-[13px] font-bold transition ${
-              side === "buy" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
-            }`}
+            className={`flex-1 rounded-lg py-2 text-[13px] font-bold transition ${side === "buy" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
           >
-            팔기 (구매 오퍼)
+            팔기 좋은 오퍼
           </button>
         </div>
 
@@ -73,9 +74,7 @@ function OfferBoard() {
             <button
               key={a}
               onClick={() => setAsset(a)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold ${
-                asset === a ? "bg-primary text-primary-foreground" : "bg-surface text-foreground"
-              }`}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold ${asset === a ? "bg-primary text-primary-foreground" : "bg-surface text-foreground"}`}
             >
               {a === "ALL" ? "전체" : a}
             </button>
@@ -90,7 +89,7 @@ function OfferBoard() {
           </div>
         ) : offers.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-surface py-12 text-center text-[13px] text-muted-foreground">
-            조건에 맞는 오퍼가 없어요
+            조건에 맞는 오퍼가 없습니다.
           </div>
         ) : (
           offers.map((o) => (
@@ -128,7 +127,7 @@ function OfferBoard() {
                   </div>
                 </div>
                 <div className="rounded-lg bg-surface px-2.5 py-1.5">
-                  <div className="text-muted-foreground">한도</div>
+                  <div className="text-muted-foreground">거래 한도</div>
                   <div className="num-tnum font-semibold text-foreground">
                     {fmtKrw(Number(o.min_order))} ~ {fmtKrw(Number(o.max_order))}
                   </div>
@@ -141,13 +140,7 @@ function OfferBoard() {
                     key={p}
                     className="rounded-md bg-surface-strong px-1.5 py-0.5 text-[10px] font-medium text-foreground"
                   >
-                    {p === "bank_transfer"
-                      ? "계좌이체"
-                      : p === "toss"
-                        ? "토스"
-                        : p === "kakao_pay"
-                          ? "카카오페이"
-                          : p}
+                    {paymentLabel(p)}
                   </span>
                 ))}
                 <div className="ml-auto inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground">

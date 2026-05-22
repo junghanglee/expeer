@@ -2,13 +2,25 @@ import { Section } from "@/components/espeer/Section";
 import { displayCounterpartyName, useCounterpartyTrust } from "@/hooks/useCounterpartyTrust";
 import { BadgeCheck, ShieldCheck, Star } from "lucide-react";
 
-export function CounterpartyTrustCard({ userId, title = "거래상대 신뢰도" }: { userId?: string; title?: string }) {
+export function CounterpartyTrustCard({
+  userId,
+  title = "거래상대 신뢰도",
+}: {
+  userId?: string;
+  title?: string;
+}) {
   const { profile, reviews, loading, rating, reviewCount, blacklistStatus } =
     useCounterpartyTrust(userId);
 
   if (!userId || loading) return null;
 
   const clear = blacklistStatus === "clear";
+  const statusText =
+    blacklistStatus === "clear"
+      ? "블랙리스트 특이사항 없음"
+      : blacklistStatus === "phone_required"
+        ? "휴대폰 등록 필요"
+        : "승인 제한 대상";
 
   return (
     <Section title={title}>
@@ -33,21 +45,24 @@ export function CounterpartyTrustCard({ userId, title = "거래상대 신뢰도"
                 }`}
               >
                 <ShieldCheck className="h-3 w-3" />
-                {clear ? "블랙리스트 특이사항 없음" : "추가 확인 필요"}
+                {statusText}
               </span>
             </div>
           </div>
         </div>
 
         <div className="mt-3 rounded-xl bg-surface p-3 text-[11px] leading-relaxed text-muted-foreground">
-          리뷰 평판과 거래 이력을 함께 확인하세요. 블랙리스트 검증은 제휴 DB 연동 전까지 내부
-          계정 상태 기준으로 표시됩니다.
+          리뷰 평판과 거래 이력을 함께 확인하세요. 블랙리스트 검증은 관리자 등록 DB의 휴대폰 번호
+          대조 방식으로 연결될 예정이며, 현재는 휴대폰 등록/계정 제한 상태를 먼저 확인합니다.
         </div>
 
         {reviews.length > 0 ? (
           <div className="mt-3 space-y-2">
             {reviews.map((review) => (
-              <div key={review.id} className="rounded-xl border border-border bg-background px-3 py-2">
+              <div
+                key={review.id}
+                className="rounded-xl border border-border bg-background px-3 py-2"
+              >
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-bold text-warning">★ {review.rating}</span>
                   <span className="text-muted-foreground">
