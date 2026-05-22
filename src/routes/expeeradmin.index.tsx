@@ -12,7 +12,7 @@ export const Route = createFileRoute("/expeeradmin/")({
 function AdminLogin() {
   const navigate = useNavigate();
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
-  const [email, setEmail] = useState("admin@expeer.art");
+  const [email, setEmail] = useState("admin@expeer.kr");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,27 +28,36 @@ function AdminLogin() {
     setError(null);
     setLoading(true);
 
-    // 운영 편의: 비밀번호가 비어 있거나 임시 마스터키와 다른 경우에도
-    // 슈퍼어드민 계정(admin@expeer.art)으로 로그인을 시도한다.
-    const targetEmail = email.trim() || "admin@expeer.art";
-    const targetPassword = password || "dlrtmvldj12!@";
+    const targetEmail = email.trim();
+    const targetPassword = password;
 
-    const { error: err } = await supabase.auth.signInWithPassword({
+    if (!targetEmail || !targetPassword) {
+      setLoading(false);
+      setError("이메일과 비밀번호를 입력해 주세요.");
+      return;
+    }
+
+    const { data, error: err } = await supabase.auth.signInWithPassword({
       email: targetEmail,
       password: targetPassword,
     });
 
-    if (err) {
-      // 폴백: 슈퍼어드민으로 자동 로그인
-      const { error: err2 } = await supabase.auth.signInWithPassword({
-        email: "admin@expeer.art",
-        password: "dlrtmvldj12!@",
-      });
-      if (err2) {
-        setLoading(false);
-        setError("운영자 로그인에 실패했습니다.");
-        return;
-      }
+    if (err || !data.user) {
+      setLoading(false);
+      setError("운영자 로그인에 실패했습니다.");
+      return;
+    }
+
+    const { data: roles, error: roleError } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user.id);
+
+    if (roleError || !roles?.some((row) => row.role === "admin")) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setError("관리자 권한이 없는 계정입니다.");
+      return;
     }
     setLoading(false);
     navigate({ to: "/expeeradmin/dashboard" });
@@ -71,7 +80,7 @@ function AdminLogin() {
 
         <h1 className="text-[20px] font-bold text-foreground">운영자 로그인</h1>
         <p className="mt-1 text-[12px] text-muted-foreground">
-          관리자 계정으로 로그인하세요. (당분간 어떤 정보로도 슈퍼어드민으로 로그인됩니다)
+          관리자 계정으로 로그인하세요. 관리자 권한이 없는 계정은 접근할 수 없습니다.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-2.5">
