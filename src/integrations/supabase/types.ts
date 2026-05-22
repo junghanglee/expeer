@@ -1,4 +1,4 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+﻿export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -559,6 +559,42 @@ export type Database = {
           },
         ];
       };
+      phone_blacklist_entries: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          is_active: boolean;
+          phone_hash: string;
+          phone_last4: string | null;
+          reason: string | null;
+          source: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          is_active?: boolean;
+          phone_hash: string;
+          phone_last4?: string | null;
+          reason?: string | null;
+          source?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          is_active?: boolean;
+          phone_hash?: string;
+          phone_last4?: string | null;
+          reason?: string | null;
+          source?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
@@ -754,6 +790,18 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      add_phone_blacklist_entry: {
+        Args: { _phone: string; _reason?: string | null; _source?: string | null };
+        Returns: Database["public"]["Tables"]["phone_blacklist_entries"]["Row"];
+      };
+      get_trade_approval_status: {
+        Args: { _user_id: string };
+        Returns: {
+          ok: boolean;
+          code: string;
+          phone_last4: string | null;
+        }[];
+      };
       get_order_bank_accounts: {
         Args: { _order_id: string };
         Returns: {

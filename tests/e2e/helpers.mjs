@@ -20,20 +20,25 @@ export function makeSupabaseClient() {
 }
 
 export function makeStamp(prefix = "e2e") {
-  return `${prefix}-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
+  return `${prefix}-${new Date()
+    .toISOString()
+    .replace(/[-:.TZ]/g, "")
+    .slice(0, 14)}`;
 }
 
-export async function signupUser(prefix) {
+export async function signupUser(prefix, options = {}) {
   const supabase = makeSupabaseClient();
   const stamp = makeStamp(prefix);
   const email = `expeer-${stamp}@gmail.com`;
   const password = `ExpeerUi!${stamp}`;
   const nickname = `UI테스트-${stamp}`;
 
+  const phone = options.phone ?? `010${stamp.replace(/\D/g, "").slice(-8).padStart(8, "0")}`;
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { nickname }, emailRedirectTo: "http://localhost:8080/app" },
+    options: { data: { nickname, phone }, emailRedirectTo: "http://localhost:8080/app" },
   });
   if (error) throw error;
   if (!data.user) throw new Error(`${prefix} signUp did not return a user`);
@@ -48,11 +53,11 @@ export async function signupUser(prefix) {
 
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ kyc_status: "approved", kyc_level: 2 })
+    .update({ kyc_status: "approved", kyc_level: 2, phone })
     .eq("id", data.user.id);
   if (profileError) throw profileError;
 
-  return { supabase, user: data.user, session, email, password, nickname, stamp };
+  return { supabase, user: data.user, session, email, password, nickname, phone, stamp };
 }
 
 export async function createBankAccount(supabase, userId, nickname, stamp, bankName = "토스뱅크") {
@@ -71,7 +76,13 @@ export async function createBankAccount(supabase, userId, nickname, stamp, bankN
   return data;
 }
 
-export async function createWallet(supabase, userId, stamp, asset = "USDC", network = "Base Sepolia") {
+export async function createWallet(
+  supabase,
+  userId,
+  stamp,
+  asset = "USDC",
+  network = "Base Sepolia",
+) {
   const { data, error } = await supabase
     .from("wallets")
     .insert({

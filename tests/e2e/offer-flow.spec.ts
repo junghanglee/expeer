@@ -1,11 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { loadEnv } from "./helpers.mjs";
-import {
-  createBankAccount,
-  createSellOffer,
-  createWallet,
-  signupUser,
-} from "./helpers.mjs";
+import { createBankAccount, createSellOffer, createWallet, signupUser } from "./helpers.mjs";
 
 loadEnv();
 
@@ -48,7 +43,9 @@ async function logout(page) {
   await page.evaluate(() => localStorage.clear());
 }
 
-test("seller can log in, register a Supabase-backed offer, and see it in market", async ({ page }) => {
+test("seller can log in, register a Supabase-backed offer, and see it in market", async ({
+  page,
+}) => {
   const seller = await signupUser("seller-pw");
   await createBankAccount(seller.supabase, seller.user.id, seller.nickname, seller.stamp);
   await createWallet(seller.supabase, seller.user.id, seller.stamp, "USDC", "Base Sepolia");
@@ -80,9 +77,9 @@ test("seller can log in, register a Supabase-backed offer, and see it in market"
   });
 
   await page.goto("/app/market");
-  await page.getByRole("button", { name: /코인 USDT/ }).click();
-  await page.getByRole("button", { name: /USDC/ }).click();
-  await expect(page.getByText("USDC 판매중").first()).toBeVisible();
+  await expect(page.getByText("P2P 환전").first()).toBeVisible();
+  await page.getByRole("button", { name: /USDC/ }).nth(1).click();
+  await expect(page.getByText("USDC 판매 오퍼").first()).toBeVisible();
   await expect(page.getByText("1,380").first()).toBeVisible();
 });
 
@@ -116,10 +113,13 @@ test("buyer can open market offer and create order chat", async ({ page }) => {
 
   await page.goto(`/app/order/new/${ad.id}`);
   await expect(page.getByText("주문 생성").first()).toBeVisible();
+  await expect(page.getByText("거래 안전 확인")).toBeVisible();
+  await expect(page.getByText("휴대폰 번호 등록").first()).toBeVisible();
   await page.getByPlaceholder("0").fill("138000");
   await expect(page.getByText("받을 코인").locator("..").getByText("100 USDC")).toBeVisible();
   await page.getByRole("button", { name: /KB국민/ }).click();
   await page.getByRole("button", { name: /USDC 테스트 지갑/ }).click();
+  await expect(page.getByText("상대방 블랙리스트 자동 확인")).toBeVisible();
   await expect(page.getByRole("button", { name: /^주문 생성$/ })).toBeEnabled();
   const submitButton = page.getByRole("button", { name: /^주문 생성$/ });
   await submitButton.click();
@@ -130,7 +130,9 @@ test("buyer can open market offer and create order chat", async ({ page }) => {
 
   const { data: order, error: orderError } = await buyer.supabase
     .from("orders")
-    .select("id,ad_id,buyer_id,seller_id,buyer_bank_account_id,seller_bank_account_id,buyer_wallet_id,status")
+    .select(
+      "id,ad_id,buyer_id,seller_id,buyer_bank_account_id,seller_bank_account_id,buyer_wallet_id,status",
+    )
     .eq("id", orderId)
     .single();
   expect(orderError).toBeNull();
@@ -155,7 +157,9 @@ test("buyer can open market offer and create order chat", async ({ page }) => {
   await page.goto(`/app/order/${orderId}`);
   await expect(page.getByText("이 계좌로 송금해 주세요")).toBeVisible();
   await expect(page.getByText("토스뱅크")).toBeVisible();
-  await expect(page.getByText(/판매자 계좌 조회 RPC가 아직 Supabase에 적용되지 않았어요/)).toHaveCount(0);
+  await expect(
+    page.getByText(/판매자 계좌 조회 RPC가 아직 Supabase에 적용되지 않았어요/),
+  ).toHaveCount(0);
 });
 
 test("buyer payment and seller completion update order activity", async ({ page }) => {
@@ -225,7 +229,7 @@ test("buyer payment and seller completion update order activity", async ({ page 
   await logout(page);
   await login(page, seller);
   await page.goto(`/app/order/${order.id}/chat`);
-  await expect(page.getByText("입금을 확인 후 코인을 릴리즈해 주세요.")).toBeVisible();
+  await expect(page.getByText("입금을 확인한 뒤 코인을 릴리즈해 주세요.")).toBeVisible();
   page.on("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: /입금 확인 \+ 코인 릴리즈/ }).click();
   await expect(page.getByText("거래 완료", { exact: true })).toBeVisible();
@@ -254,7 +258,7 @@ test("buyer payment and seller completion update order activity", async ({ page 
   expect(completedOrder?.completed_at).toBeTruthy();
 
   await page.goto("/app/selling");
-  await page.getByRole("button", { name: /완료된 거래/ }).click();
+  await page.getByRole("button", { name: /^1\s*완료$/ }).click();
   await expect(page.getByText(`주문 #${order.id.slice(-6)}`)).toBeVisible();
   await expect(page.getByText("완료").first()).toBeVisible();
 });

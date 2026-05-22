@@ -53,8 +53,11 @@ function Kyc() {
         uploadFile(selfie, "selfie"),
       ]);
 
+      const normalizedPhone = phone.replace(/\D/g, "");
+      if (normalizedPhone.length < 10) throw new Error("휴대폰 번호를 정확히 입력해주세요");
+
       // Update profile phone
-      await supabase.from("profiles").update({ phone }).eq("id", user.id);
+      await supabase.from("profiles").update({ phone: normalizedPhone }).eq("id", user.id);
 
       // Insert KYC submission
       const { error: kycErr } = await supabase.from("kyc_submissions").insert({

@@ -28,13 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("role")
       .eq("user_id", uid)
       .order("role", { ascending: true });
-    if (data && data.length) {
-      // admin > user (alphabetical: admin first)
-      const hasAdmin = data.some((r) => r.role === "admin");
-      setRole(hasAdmin ? "admin" : "user");
-    } else {
-      setRole(null);
-    }
+    const nextRole =
+      data && data.length && data.some((r) => r.role === "admin")
+        ? "admin"
+        : data && data.length
+          ? "user"
+          : null;
+    setRole((current) => (current === nextRole ? current : nextRole));
   };
 
   useEffect(() => {

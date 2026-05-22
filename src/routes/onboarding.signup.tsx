@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Mail, Lock, User } from "lucide-react";
+import { Mail, Lock, User, Smartphone } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,6 +12,7 @@ function Signup() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +22,9 @@ function Signup() {
     e.preventDefault();
     setError(null);
 
+    const normalizedPhone = phone.replace(/\D/g, "");
+    if (normalizedPhone.length < 10)
+      return setError("거래 승인을 위해 휴대폰 번호를 입력해주세요.");
     if (password.length < 8) return setError("비밀번호는 최소 8자 이상이어야 합니다.");
     if (password !== confirm) return setError("비밀번호가 일치하지 않습니다.");
 
@@ -30,7 +34,7 @@ function Signup() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/app`,
-        data: { nickname: nickname || email.split("@")[0] },
+        data: { nickname: nickname || email.split("@")[0], phone: normalizedPhone },
       },
     });
     setLoading(false);
@@ -63,6 +67,15 @@ function Signup() {
             placeholder="닉네임"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
+          />
+          <Field
+            icon={Smartphone}
+            placeholder="휴대폰 번호 (거래 승인 필수)"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            required
+            inputMode="tel"
+            autoComplete="tel"
           />
           <Field
             icon={Lock}

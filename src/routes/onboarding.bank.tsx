@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AppHeader } from "@/components/espeer/AppHeader";
 import { Progress } from "./onboarding.kyc";
-import { Building2, Trash2, Star, Loader2 } from "lucide-react";
+import { Building2, Trash2, Star, Loader2, Pencil } from "lucide-react";
 import { useState } from "react";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { toast } from "sonner";
@@ -15,11 +15,12 @@ const BANKS = ["토스뱅크", "KB국민", "신한", "카카오뱅크", "우리"
 
 function Bank() {
   const navigate = useNavigate();
-  const { accounts, loading, add, remove, setPrimary } = useBankAccounts();
+  const { accounts, loading, add, update, remove, setPrimary } = useBankAccounts();
   const [bank, setBank] = useState(BANKS[0]);
   const [number, setNumber] = useState("");
   const [holder, setHolder] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const onAdd = async () => {
     if (!number.trim() || !holder.trim()) {
@@ -28,21 +29,38 @@ function Bank() {
     }
     setSubmitting(true);
     try {
-      await add({
-        bank_name: bank,
-        account_number: number.trim(),
-        account_holder: holder.trim(),
-        is_primary: accounts.length === 0,
-      });
+      if (editingId) {
+        await update(editingId, {
+          bank_name: bank,
+          account_number: number.trim(),
+          account_holder: holder.trim(),
+        });
+        setEditingId(null);
+        toast.success("계좌 정보가 수정되었습니다");
+      } else {
+        await add({
+          bank_name: bank,
+          account_number: number.trim(),
+          account_holder: holder.trim(),
+          is_primary: accounts.length === 0,
+        });
+        toast.success("계좌가 등록되었습니다");
+      }
       setNumber("");
       setHolder("");
-      toast.success("계좌가 등록되었습니다");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "등록 실패";
       toast.error(msg);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const startEdit = (account: (typeof accounts)[number]) => {
+    setEditingId(account.id);
+    setBank(account.bank_name);
+    setNumber(account.account_number);
+    setHolder(account.account_holder);
   };
 
   return (
@@ -89,6 +107,9 @@ function Bank() {
                       <Star className="h-4 w-4" />
                     </button>
                   )}
+                  <button onClick={() => startEdit(a)} className="text-muted-foreground">
+                    <Pencil className="h-4 w-4" />
+                  </button>
                   <button onClick={() => remove(a.id)} className="text-destructive">
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -137,7 +158,13 @@ function Bank() {
               disabled={submitting || loading}
               className="mt-4 w-full rounded-xl bg-surface-strong py-3 text-[14px] font-bold text-foreground disabled:opacity-50"
             >
-              {submitting ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "+ 계좌 추가"}
+              {submitting ? (
+                <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+              ) : editingId ? (
+                "계좌 수정 저장"
+              ) : (
+                "+ 계좌 추가"
+              )}
             </button>
           </div>
 

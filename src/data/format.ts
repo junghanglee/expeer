@@ -3,7 +3,7 @@ export const VOLATILE_ASSETS = ["BTC", "ETH", "SOL", "MATIC", "BNB", "XRP"] as c
 
 export type CryptoAsset = "USDT" | "USDC" | "DAI" | "BTC" | "ETH" | "SOL" | "MATIC" | "BNB" | "XRP";
 export type FiatCode = "KRW" | "USD" | "JPY" | "EUR";
-export type SwapPair = "USDT/KRW" | "USDC/KRW" | "USDT/USD";
+export type SwapPair = "USDT/KRW" | "USDC/KRW" | "DAI/KRW" | "USDT/USD";
 export type SwapSide = "buy" | "sell";
 export type SwapReqStatus = "OPEN" | "MATCHING" | "IN_ESCROW" | "COMPLETED" | "CANCELLED";
 export type RiskTier = "Safe" | "Standard" | "Restricted" | "Review" | "Suspended";
@@ -25,7 +25,13 @@ export interface SwapRequest {
   status: SwapReqStatus;
   createdAt: string;
   expectedFillSec?: number;
+  minOrder?: number;
+  maxOrder?: number;
+  activeOrderCount?: number;
+  paymentWindowMin?: number;
+  terms?: string | null;
   isMine?: boolean;
+  ownerId?: string;
 }
 
 export type SwapXSide = "give" | "take";
@@ -45,7 +51,12 @@ export interface CryptoSwapOffer {
   createdAt: string;
   expectedFillSec?: number;
   filledFromAmount: number;
+  minFromAmount?: number;
+  maxFromAmount?: number;
+  activeOrderCount?: number;
+  paymentWindowMin?: number;
   isMine?: boolean;
+  ownerId?: string;
 }
 
 export interface PairStats {

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { normalizePhone } from "@/utils/tradeApproval.functions";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Pick<
@@ -9,6 +8,10 @@ type Profile = Pick<
 >;
 
 type Review = Tables<"reviews">;
+
+function normalizePhone(value: string | null | undefined) {
+  return (value ?? "").replace(/\D/g, "");
+}
 
 export function useCounterpartyTrust(userId: string | undefined) {
   const [profile, setProfile] = useState<Profile | null>(null);

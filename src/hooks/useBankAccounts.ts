@@ -46,6 +46,15 @@ export function useBankAccounts() {
     [user, load],
   );
 
+  const update = useCallback(
+    async (id: string, input: Partial<Omit<TablesInsert<"bank_accounts">, "user_id">>) => {
+      const { error } = await supabase.from("bank_accounts").update(input).eq("id", id);
+      if (error) throw error;
+      await load();
+    },
+    [load],
+  );
+
   const remove = useCallback(
     async (id: string) => {
       const { error } = await supabase.from("bank_accounts").delete().eq("id", id);
@@ -65,5 +74,5 @@ export function useBankAccounts() {
     [user, load],
   );
 
-  return { accounts, loading, add, remove, setPrimary, refresh: load };
+  return { accounts, loading, add, update, remove, setPrimary, refresh: load };
 }
