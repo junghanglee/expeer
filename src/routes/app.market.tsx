@@ -18,6 +18,7 @@ import {
   CircleDot,
   Plus,
   Sparkles,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   fmtNum,
@@ -45,18 +46,29 @@ export const Route = createFileRoute("/app/market")({
 
 type Tab = "buy" | "sell" | "myorders" | "done";
 type SortKey = "best" | "newest" | "volume";
+type PaymentFilter = "all" | "bank";
 const PAIRS: SwapPair[] = ["USDT/KRW", "USDC/KRW", "USDT/USD"];
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: "best", label: "유리한 가격순" },
+  { key: "best", label: "추천순" },
   { key: "newest", label: "최신순" },
-  { key: "volume", label: "거래량순" },
+  { key: "volume", label: "잔여수량순" },
+];
+
+const PAYMENT_FILTERS: { key: PaymentFilter; label: string }[] = [
+  { key: "all", label: "모든 결제" },
+  { key: "bank", label: "무통장입금" },
 ];
 
 // DB에 오퍼가 없을 때 시세 기준값으로만 사용한다.
 function fallbackMidPrice(pair: SwapPair) {
   if (pair === "USDT/KRW" || pair === "USDC/KRW") return 1380;
   return 1;
+}
+
+function formatQuoteAmount(amount: number, quote: string) {
+  if (quote === "KRW") return fmtKrw(Math.round(amount));
+  return `$${fmtNum(amount, 2)}`;
 }
 
 // 프로필 기본 페어 — 실제 서비스에서는 user 컨텍스트, 여기선 localStorage 시뮬
@@ -70,6 +82,8 @@ function MarketPage() {
   const [pair, setPair] = useState<SwapPair>("USDT/KRW");
   const [tab, setTab] = useState<Tab>("buy");
   const [sort, setSort] = useState<SortKey>("best");
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
+  const [amountFilter, setAmountFilter] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [offerPrice, setOfferPrice] = useState("");
   const [offerAmount, setOfferAmount] = useState("1000");
@@ -89,6 +103,7 @@ function MarketPage() {
   const base = pair.split("/")[0];
   const fiat = pair.split("/")[1] as "KRW" | "USD";
   const selectedRegisterSide: SwapSide = tab === "sell" ? "sell" : "buy";
+  const numericAmountFilter = Number(amountFilter.replace(/\D/g, "")) || 0;
   // 글로벌 시세에서 라이브 가격을 가져오고, 실패 시 DB 오퍼 기반 기준가를 사용한다.
   const live = useLivePrices([base]);
   const liveQuote = live.quotes[base];
@@ -114,23 +129,37 @@ function MarketPage() {
     [sort],
   );
 
+  const isVisibleByFilters = useCallback(
+    (offer: SwapRequest) => {
+      // MVP에서는 법정화폐 P2P 결제수단이 무통장입금 단일 옵션이므로
+      // DB에 은행명이 비어 있는 오퍼도 결제 필터 대상에 포함한다.
+      const matchesPayment = paymentFilter === "all" || true;
+      const matchesAmount =
+        numericAmountFilter === 0 ||
+        ((offer.minOrder ?? 0) <= numericAmountFilter &&
+          numericAmountFilter <= (offer.maxOrder ?? Number.POSITIVE_INFINITY));
+      return matchesPayment && matchesAmount;
+    },
+    [numericAmountFilter, paymentFilter],
+  );
+
   // sell side 오퍼 (구매탭에서 보임)
   const sellOffers = useMemo(
     () =>
       applySort(
-        allOffers.filter((s) => s.pair === pair && s.side === "sell"),
+        allOffers.filter((s) => s.pair === pair && s.side === "sell" && isVisibleByFilters(s)),
         "sell",
       ),
-    [pair, allOffers, applySort],
+    [pair, allOffers, applySort, isVisibleByFilters],
   );
   // buy side 오퍼 (판매탭에서 보임)
   const buyOffers = useMemo(
     () =>
       applySort(
-        allOffers.filter((s) => s.pair === pair && s.side === "buy"),
+        allOffers.filter((s) => s.pair === pair && s.side === "buy" && isVisibleByFilters(s)),
         "buy",
       ),
-    [pair, allOffers, applySort],
+    [pair, allOffers, applySort, isVisibleByFilters],
   );
 
   const myList = useMemo(
@@ -155,9 +184,9 @@ function MarketPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div className="leading-tight">
-            <div className="text-[15px] font-extrabold text-foreground">P2P 환전</div>
+            <div className="text-[15px] font-extrabold text-foreground">P2P 마켓</div>
             <div className="truncate text-[10px] font-semibold text-muted-foreground">
-              스테이블코인 ↔ 법정화폐
+              원하는 오퍼를 골라 안전하게 거래
             </div>
           </div>
         </div>
@@ -167,22 +196,41 @@ function MarketPage() {
         </div>
       </header>
 
+      {/* P2P entry summary */}
+      <div className="mx-4 mt-3 rounded-3xl bg-foreground p-4 text-background shadow-sm">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-background/10 px-2.5 py-1 text-[10px] font-extrabold">
+          <ShieldCheck className="h-3.5 w-3.5" /> 에스크로 보호 P2P
+        </div>
+        <h1 className="mt-3 text-[22px] font-black leading-tight">
+          {fiat}로 {base}를 사고팔 오퍼를 바로 찾으세요
+        </h1>
+        <p className="mt-2 text-[11px] font-semibold leading-relaxed text-background/70">
+          구매/판매 방향을 고르고, 코인·금액·결제수단 필터로 맞는 광고만 확인합니다. 코인 교환은
+          별도 메뉴에서 진행하고, 이 화면은 법정화폐 P2P 거래에 집중합니다.
+        </p>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+          <HeroStat label="판매 오퍼" value={`${sellOffers.length}건`} />
+          <HeroStat label="구매 오퍼" value={`${buyOffers.length}건`} />
+          <HeroStat label="기준가" value={`${fmtNum(mid)} ${fiat}`} />
+        </div>
+      </div>
+
       {/* Pair selector — 바이낸스 P2P 스타일: 코인/통화 직접 선택 */}
       <div className="mx-4 mt-3 rounded-2xl border border-border bg-card p-3 shadow-sm">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div>
             <div className="flex items-center gap-1.5 text-[14px] font-extrabold text-foreground">
-              <HandCoins className="h-4 w-4 text-primary" /> 거래오퍼 생성하기
+              <HandCoins className="h-4 w-4 text-primary" /> 거래 코인·통화 선택
             </div>
             <div className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
-              내가 줄 것/받을 것 기준으로 바로 등록합니다
+              먼저 무엇을 사고팔지 정하면 아래 오퍼 목록이 바뀝니다
             </div>
           </div>
           <button
             onClick={() => setCreateOpen((value) => !value)}
             className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-foreground px-3 text-[12px] font-extrabold text-background"
           >
-            등록하기
+            신규 오퍼
             <ChevronDown
               className={`h-3.5 w-3.5 transition-transform ${createOpen ? "rotate-180" : ""}`}
             />
@@ -193,9 +241,9 @@ function MarketPage() {
           <div className="mt-3 overflow-hidden rounded-2xl border border-primary/20 bg-primary-soft/40 p-3 animate-in slide-in-from-top-1 duration-200">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <div className="text-[12px] font-extrabold text-foreground">오퍼광고 등록폼</div>
+                <div className="text-[12px] font-extrabold text-foreground">신규 P2P 오퍼 등록</div>
                 <div className="text-[10px] font-bold text-muted-foreground">
-                  결제수단은 우선 무통장입금만 지원합니다
+                  현재 선택한 탭 방향으로 /app/selling/new에 조건을 전달합니다
                 </div>
               </div>
               <span className="rounded-full bg-background px-2 py-1 text-[10px] font-extrabold text-primary">
@@ -205,7 +253,7 @@ function MarketPage() {
 
             <div className="mt-3 grid grid-cols-2 gap-2">
               <label className="rounded-xl bg-background px-3 py-2">
-                <span className="text-[10px] font-bold text-muted-foreground">거래가격</span>
+                <span className="text-[10px] font-bold text-muted-foreground">1 {base} 가격</span>
                 <input
                   value={offerPrice}
                   onChange={(e) => setOfferPrice(e.target.value.replace(/\D/g, ""))}
@@ -215,7 +263,7 @@ function MarketPage() {
                 />
               </label>
               <label className="rounded-xl bg-background px-3 py-2">
-                <span className="text-[10px] font-bold text-muted-foreground">총 코인수량</span>
+                <span className="text-[10px] font-bold text-muted-foreground">총 오퍼 수량</span>
                 <input
                   value={offerAmount}
                   onChange={(e) => setOfferAmount(e.target.value.replace(/[^\d.]/g, ""))}
@@ -224,7 +272,9 @@ function MarketPage() {
                 />
               </label>
               <label className="rounded-xl bg-background px-3 py-2">
-                <span className="text-[10px] font-bold text-muted-foreground">최소 주문금액</span>
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  최소 주문금액({fiat})
+                </span>
                 <input
                   value={offerMin}
                   onChange={(e) => setOfferMin(e.target.value.replace(/\D/g, ""))}
@@ -233,7 +283,9 @@ function MarketPage() {
                 />
               </label>
               <label className="rounded-xl bg-background px-3 py-2">
-                <span className="text-[10px] font-bold text-muted-foreground">최대 주문금액</span>
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  최대 주문금액({fiat})
+                </span>
                 <input
                   value={offerMax}
                   onChange={(e) => setOfferMax(e.target.value.replace(/\D/g, ""))}
@@ -296,7 +348,7 @@ function MarketPage() {
           className="card-lift flex items-center justify-center gap-2 rounded-2xl bg-success px-3 py-3 text-success-foreground"
         >
           <Plus className="h-4 w-4 shrink-0" />
-          <span className="truncate text-[13px] font-extrabold">KRW로 {base} 받기</span>
+          <span className="truncate text-[13px] font-extrabold">{base} 구매 광고 만들기</span>
         </Link>
         <Link
           to="/app/selling/new"
@@ -304,18 +356,26 @@ function MarketPage() {
           className="card-lift flex items-center justify-center gap-2 rounded-2xl bg-destructive px-3 py-3 text-destructive-foreground"
         >
           <Plus className="h-4 w-4 shrink-0" />
-          <span className="truncate text-[13px] font-extrabold">{base} 주고 KRW 받기</span>
+          <span className="truncate text-[13px] font-extrabold">{base} 판매 광고 만들기</span>
+        </Link>
+      </div>
+      <div className="mx-4 mt-2">
+        <Link
+          to="/app/selling"
+          className="flex h-10 items-center justify-center rounded-2xl border border-border bg-card text-[12px] font-extrabold text-foreground"
+        >
+          내 오퍼·진행 거래 관리하기
         </Link>
       </div>
 
       {/* Tabs */}
       <div className="mt-3 flex gap-1 px-4">
         <TabBtn active={tab === "buy"} onClick={() => setTab("buy")}>
-          <span className="text-success">●</span> KRW → 코인{" "}
+          <span className="text-success">●</span> 구매{" "}
           <span className="ml-0.5 text-[11px] opacity-70">{sellOffers.length}</span>
         </TabBtn>
         <TabBtn active={tab === "sell"} onClick={() => setTab("sell")}>
-          <span className="text-destructive">●</span> 코인 → KRW{" "}
+          <span className="text-destructive">●</span> 판매{" "}
           <span className="ml-0.5 text-[11px] opacity-70">{buyOffers.length}</span>
         </TabBtn>
         <TabBtn active={tab === "myorders"} onClick={() => setTab("myorders")}>
@@ -326,25 +386,55 @@ function MarketPage() {
         </TabBtn>
       </div>
 
-      {/* Sort filter — 구매/판매 탭에서만 노출 */}
+      {/* Offer filters — 구매/판매 탭에서만 노출 */}
       {(tab === "buy" || tab === "sell") && (
-        <div className="mt-2 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {SORT_OPTIONS.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => setSort(s.key)}
-              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${
-                sort === s.key
-                  ? "bg-foreground text-background"
-                  : "border border-border bg-card text-muted-foreground"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-          <span className="ml-auto shrink-0 whitespace-nowrap text-[10px] font-semibold text-muted-foreground">
-            기준 {fmtNum(mid)} {pair.split("/")[1]}
-          </span>
+        <div className="mx-4 mt-2 rounded-2xl border border-border bg-card p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-foreground">
+              <SlidersHorizontal className="h-3.5 w-3.5 text-primary" /> 오퍼 필터
+            </div>
+            <span className="text-[10px] font-semibold text-muted-foreground">
+              기준가 {fmtNum(mid)} {fiat}
+            </span>
+          </div>
+          <label className="flex h-10 items-center gap-2 rounded-xl bg-surface px-3">
+            <span className="shrink-0 text-[10px] font-bold text-muted-foreground">주문금액</span>
+            <input
+              value={amountFilter}
+              onChange={(e) => setAmountFilter(e.target.value.replace(/\D/g, ""))}
+              inputMode="numeric"
+              placeholder={`${fiat} 금액 입력`}
+              className="num-display min-w-0 flex-1 bg-transparent text-[13px] font-extrabold text-foreground outline-none"
+            />
+          </label>
+          <div className="mt-2 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {PAYMENT_FILTERS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setPaymentFilter(p.key)}
+                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                  paymentFilter === p.key
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border bg-background text-muted-foreground"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+            {SORT_OPTIONS.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setSort(s.key)}
+                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                  sort === s.key
+                    ? "bg-foreground text-background"
+                    : "border border-border bg-background text-muted-foreground"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -352,9 +442,10 @@ function MarketPage() {
       {tab === "buy" && (
         <div className="px-4 pt-3">
           <SectionHeader
-            title="KRW를 주고 코인을 받을 수 있는 오퍼"
+            title={`${base}를 살 수 있는 판매자 오퍼`}
             sub={`${sellOffers.length}건 · ${SORT_OPTIONS.find((o) => o.key === sort)!.label}`}
             tone="buy"
+            description={`${fiat}를 결제하고 ${base}를 받습니다. 낮은 가격일수록 유리합니다.`}
           />
           {sellOffers.length === 0 ? (
             <EmptyOffer side="sell" />
@@ -371,9 +462,10 @@ function MarketPage() {
       {tab === "sell" && (
         <div className="px-4 pt-3">
           <SectionHeader
-            title="코인을 주고 KRW를 받을 수 있는 오퍼"
+            title={`${base}를 팔 수 있는 구매자 오퍼`}
             sub={`${buyOffers.length}건 · ${SORT_OPTIONS.find((o) => o.key === sort)!.label}`}
             tone="sell"
+            description={`${base}를 에스크로에 맡기고 ${fiat}를 받습니다. 높은 가격일수록 유리합니다.`}
           />
           {buyOffers.length === 0 ? (
             <EmptyOffer side="buy" />
@@ -426,6 +518,15 @@ function MarketPage() {
 
 /* PairSummary 제거 — DepthMiniChart에 통합되었습니다 */
 
+function HeroStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-background/10 px-2 py-2">
+      <div className="text-[9px] font-bold text-background/60">{label}</div>
+      <div className="num-display mt-0.5 truncate text-[12px] text-background">{value}</div>
+    </div>
+  );
+}
+
 /* ============== Tabs / chips ============== */
 function TabBtn({
   active,
@@ -448,20 +549,39 @@ function TabBtn({
   );
 }
 
-function SectionHeader({ title, sub, tone }: { title: string; sub: string; tone: "buy" | "sell" }) {
+function SectionHeader({
+  title,
+  sub,
+  tone,
+  description,
+}: {
+  title: string;
+  sub: string;
+  tone: "buy" | "sell";
+  description?: string;
+}) {
   return (
-    <div className="mb-2 flex items-center justify-between">
-      <div className="flex items-center gap-1.5">
-        <span
-          className={`flex h-7 w-7 items-center justify-center rounded-full ${
-            tone === "buy" ? "bg-success-soft text-success" : "bg-destructive-soft text-destructive"
-          }`}
-        >
-          <HandCoins className="h-3.5 w-3.5" />
-        </span>
-        <span className="text-[12px] font-extrabold text-foreground">{title}</span>
+    <div className="mb-2 rounded-2xl bg-surface px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+              tone === "buy"
+                ? "bg-success-soft text-success"
+                : "bg-destructive-soft text-destructive"
+            }`}
+          >
+            <HandCoins className="h-3.5 w-3.5" />
+          </span>
+          <span className="truncate text-[12px] font-extrabold text-foreground">{title}</span>
+        </div>
+        <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">{sub}</span>
       </div>
-      <span className="text-[10px] font-semibold text-muted-foreground">{sub}</span>
+      {description && (
+        <div className="mt-1 pl-8 text-[10px] font-semibold leading-relaxed text-muted-foreground">
+          {description}
+        </div>
+      )}
     </div>
   );
 }
@@ -484,6 +604,7 @@ function OfferCard({
   const quote = req.pair.split("/")[1];
   const remain = req.amountToken - req.filledToken;
   const fillPct = Math.round((req.filledToken / req.amountToken) * 100);
+  const bankLabels = req.banks.length ? req.banks : ["무통장입금"];
 
   const isTake = mode === "take-buy" || mode === "take-sell";
   const [pick, setPick] = useState<number>(remain);
@@ -573,9 +694,10 @@ function OfferCard({
           <div className="text-[10px] text-muted-foreground">총 {fmtNum(req.amountToken)}</div>
         </div>
         <div className="text-right">
-          <div className="text-muted-foreground">최대 체결액</div>
+          <div className="text-muted-foreground">주문 한도</div>
           <div className="num-display mt-0.5 text-[13px] text-foreground">
-            {fmtKrw(Math.round(unit * remain))}
+            {formatQuoteAmount(req.minOrder ?? 0, quote)} ~{" "}
+            {formatQuoteAmount(req.maxOrder ?? unit * remain, quote)}
           </div>
         </div>
       </div>
@@ -604,12 +726,12 @@ function OfferCard({
           <span className="text-[10px]">Lv.{req.ownerLevel}</span>
         </div>
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          {req.banks.slice(0, 2).map((b) => (
+          {bankLabels.slice(0, 2).map((b) => (
             <span key={b} className="rounded bg-surface px-1.5 py-0.5">
               {b}
             </span>
           ))}
-          {req.banks.length > 2 && <span>+{req.banks.length - 2}</span>}
+          {bankLabels.length > 2 && <span>+{bankLabels.length - 2}</span>}
         </div>
       </div>
 
@@ -667,7 +789,7 @@ function OfferCard({
                   {mode === "take-buy" ? "지불 금액" : "수령 금액"}
                 </span>
                 <span className="num-display text-[14px] text-foreground">
-                  {fmtKrw(Math.round(totalQuote))}
+                  {formatQuoteAmount(totalQuote, quote)}
                 </span>
               </div>
 
