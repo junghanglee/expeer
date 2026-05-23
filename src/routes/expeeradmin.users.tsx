@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "./expeeradmin.dashboard";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminToggleSuspend } from "@/utils/admin.functions";
 import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck, ShieldX, Eye, X, Plus, Trash2, AlertTriangle } from "lucide-react";
@@ -25,8 +26,11 @@ function Users() {
   const [reason, setReason] = useState("");
   const [source, setSource] = useState("manual");
   const [blacklistBusy, setBlacklistBusy] = useState(false);
+  const [suspendBusyUserId, setSuspendBusyUserId] = useState<string | null>(null);
+  const suspendVersionRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestedVersion = suspendVersionRef.current;
     setLoading(true);
     const [profilesRes, blacklistRes] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
@@ -35,7 +39,9 @@ function Users() {
         .select("*")
         .order("created_at", { ascending: false }),
     ]);
-    setProfiles(profilesRes.data ?? []);
+    if (requestedVersion === suspendVersionRef.current) {
+      setProfiles(profilesRes.data ?? []);
+    }
     setBlacklist((blacklistRes.data ?? []) as PhoneBlacklistEntry[]);
     setLoading(false);
   }, []);
@@ -84,6 +90,32 @@ function Users() {
       toast.error(e instanceof Error ? e.message : "처리 실패");
     } finally {
       setBlacklistBusy(false);
+    }
+  };
+
+  const toggleUserSuspend = async (user: Profile) => {
+    const nextSuspended = !user.is_suspended;
+    setSuspendBusyUserId(user.id);
+    suspendVersionRef.current += 1;
+    try {
+      setProfiles((current) =>
+        current.map((profile) =>
+          profile.id === user.id ? { ...profile, is_suspended: nextSuspended } : profile,
+        ),
+      );
+      const res = await adminToggleSuspend({ data: { userId: user.id, suspended: nextSuspended } });
+      if (!res.ok) throw new Error(res.error ?? "처리 실패");
+      toast.success(nextSuspended ? "계정 정지 완료" : "계정 활성화 완료");
+      await load();
+    } catch (e: unknown) {
+      setProfiles((current) =>
+        current.map((profile) =>
+          profile.id === user.id ? { ...profile, is_suspended: user.is_suspended } : profile,
+        ),
+      );
+      toast.error(e instanceof Error ? e.message : "처리 실패");
+    } finally {
+      setSuspendBusyUserId(null);
     }
   };
 
@@ -243,7 +275,7 @@ function Users() {
                 <tr key={u.id}>
                   <td className="px-4 py-3 font-bold text-foreground">{u.nickname ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{u.phone ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{maskPhone(u.phone)}</td>
                   <td className="px-4 py-3">
                     <KycBadge status={u.kyc_status} />
                   </td>
@@ -262,12 +294,26 @@ function Users() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => openKyc(u.id)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] font-bold text-foreground"
-                    >
-                      <Eye className="h-3 w-3" /> KYC 검토
-                    </button>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        onClick={() => openKyc(u.id)}
+                        disabled={u.kyc_status === "none"}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] font-bold text-foreground disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        <Eye className="h-3 w-3" /> KYC 검토
+                      </button>
+                      <button
+                        onClick={() => toggleUserSuspend(u)}
+                        disabled={suspendBusyUserId === u.id}
+                        className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold disabled:opacity-50 ${
+                          u.is_suspended
+                            ? "bg-success text-success-foreground"
+                            : "bg-destructive text-destructive-foreground"
+                        }`}
+                      >
+                        {u.is_suspended ? "활성화" : "정지"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -295,6 +341,20 @@ function Users() {
       )}
     </AdminShell>
   );
+}
+
+function maskPhone(phone: string | null) {
+  if (!phone) return "—";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 4) return "****";
+  return `****${digits.slice(-4)}`;
+}
+
+function maskSensitiveId(value: string | null) {
+  if (!value) return "—";
+  const compact = value.trim();
+  if (compact.length <= 4) return "****";
+  return `${compact.slice(0, 2)}${"*".repeat(Math.min(8, compact.length - 4))}${compact.slice(-2)}`;
 }
 
 function KycBadge({ status }: { status: Profile["kyc_status"] }) {
@@ -383,7 +443,7 @@ function KycReviewModal({
         <div className="grid grid-cols-2 gap-3 text-[13px]">
           <Info label="실명" value={submission.full_name} />
           <Info label="신분증 종류" value={submission.id_type} />
-          <Info label="신분증 번호" value={submission.id_number} />
+          <Info label="신분증 번호" value={maskSensitiveId(submission.id_number)} />
           <Info label="현재 상태" value={submission.status} />
         </div>
 

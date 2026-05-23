@@ -25,11 +25,14 @@ export const adminToggleSuspend = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
-    const { error } = await supabase
+    const { data: updatedProfile, error: updateError } = await supabase
       .from("profiles")
       .update({ is_suspended: data.suspended })
-      .eq("id", data.userId);
-    if (error) return { ok: false, error: error.message };
+      .eq("id", data.userId)
+      .select("id")
+      .maybeSingle();
+    if (updateError) return { ok: false, error: updateError.message };
+    if (!updatedProfile) return { ok: false, error: "정지/활성화할 사용자를 찾을 수 없습니다" };
     return { ok: true };
   });
 

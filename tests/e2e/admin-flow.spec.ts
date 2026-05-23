@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { loadEnv } from "./helpers.mjs";
+import { loadEnv, signupUser, makeSupabaseClient } from "./helpers.mjs";
 
 loadEnv();
 
@@ -51,4 +51,48 @@ test("admin can log in and manage phone blacklist", async ({ page }) => {
 
   await page.getByRole("button", { name: /해제/ }).first().click();
   await expect(page.getByText("블랙리스트 해제 완료")).toBeVisible();
+});
+
+test("admin users page masks phone data and can suspend/activate user", async ({ page }) => {
+  const testUser = await signupUser("admin-users-suspend");
+  const adminSupabase = makeSupabaseClient();
+
+  await page.goto("/expeeradmin");
+  await page.getByPlaceholder("비밀번호").fill(adminPassword);
+  await page.getByRole("button", { name: "로그인" }).click();
+  await expect(page).toHaveURL(/\/expeeradmin\/dashboard/);
+
+  await page.goto("/expeeradmin/users");
+  await expect(page.getByText("사용자 관리")).toBeVisible();
+
+  const row = page.getByRole("row").filter({ hasText: testUser.email });
+  await expect(row).toBeVisible();
+  await expect(row).toContainText(`****${testUser.phone.slice(-4)}`);
+  await expect(row).not.toContainText(testUser.phone);
+
+  await row.getByRole("button", { name: "정지" }).click();
+  await expect(page.getByText("계정 정지 완료")).toBeVisible();
+  await expect(row.getByText("정지")).toBeVisible();
+  await expect(row.getByRole("button", { name: "활성화" })).toBeVisible();
+
+  const suspendedProfile = await adminSupabase
+    .from("profiles")
+    .select("is_suspended")
+    .eq("id", testUser.user.id)
+    .maybeSingle();
+  expect(suspendedProfile.error).toBeNull();
+  expect(suspendedProfile.data?.is_suspended).toBe(true);
+
+  await row.getByRole("button", { name: "활성화" }).click();
+  await expect(page.getByText("계정 활성화 완료")).toBeVisible();
+  await expect(row.getByText("활성")).toBeVisible();
+  await expect(row.getByRole("button", { name: "정지" })).toBeVisible();
+
+  const activeProfile = await adminSupabase
+    .from("profiles")
+    .select("is_suspended")
+    .eq("id", testUser.user.id)
+    .maybeSingle();
+  expect(activeProfile.error).toBeNull();
+  expect(activeProfile.data?.is_suspended).toBe(false);
 });
