@@ -1,19 +1,19 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, ArrowLeftRight, ArrowRightLeft, Activity, User } from "lucide-react";
+import { ArrowLeftRight, ListOrdered, Megaphone, User, Wallet } from "lucide-react";
+import type { ComponentType } from "react";
 
 interface Tab {
-  to: "/app" | "/app/market" | "/app/swap" | "/app/selling" | "/app/profile";
+  to: "/app/market" | "/app/selling" | "/app/orders" | "/app/profile" | "/app/settings";
   label: string;
-  icon: typeof Home;
-  exact?: boolean;
+  icon: ComponentType<{ className?: string; strokeWidth?: number }>;
 }
 
 const tabs: Tab[] = [
-  { to: "/app", label: "홈", icon: Home, exact: true },
-  { to: "/app/market", label: "P2P환전", icon: ArrowLeftRight },
-  { to: "/app/swap", label: "P2P교환", icon: ArrowRightLeft },
-  { to: "/app/selling", label: "활동", icon: Activity },
-  { to: "/app/profile", label: "프로필", icon: User },
+  { to: "/app/market", label: "P2P", icon: ArrowLeftRight },
+  { to: "/app/selling", label: "내 오퍼", icon: Megaphone },
+  { to: "/app/orders", label: "주문", icon: ListOrdered },
+  { to: "/app/profile", label: "지갑·계좌", icon: Wallet },
+  { to: "/app/settings", label: "내 정보", icon: User },
 ];
 
 export function BottomTabBar() {
@@ -22,7 +22,7 @@ export function BottomTabBar() {
     <nav className="sticky bottom-0 left-0 right-0 z-30 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <ul className="mx-auto grid max-w-[480px] grid-cols-5">
         {tabs.map((t) => {
-          const active = t.exact ? pathname === t.to : pathname.startsWith(t.to);
+          const active = pathname === t.to || pathname.startsWith(t.to + "/");
           const Icon = t.icon;
           return (
             <li key={t.to}>
