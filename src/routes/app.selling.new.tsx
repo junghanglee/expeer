@@ -15,11 +15,26 @@ const searchSchema = z.object({
   asset: z.string().optional(),
   give: z.enum(["KRW", "USDT", "USDC", "DAI"]).optional(),
   receive: z.enum(["KRW", "USDT", "USDC", "DAI"]).optional(),
-  price: z.string().optional(),
-  fiatAmount: z.string().optional(),
-  coinAmount: z.string().optional(),
-  minOrder: z.string().optional(),
-  maxOrder: z.string().optional(),
+  price: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((value) => (value === undefined ? undefined : String(value))),
+  fiatAmount: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((value) => (value === undefined ? undefined : String(value))),
+  coinAmount: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((value) => (value === undefined ? undefined : String(value))),
+  minOrder: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((value) => (value === undefined ? undefined : String(value))),
+  maxOrder: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((value) => (value === undefined ? undefined : String(value))),
 });
 
 export const Route = createFileRoute("/app/selling/new")({
