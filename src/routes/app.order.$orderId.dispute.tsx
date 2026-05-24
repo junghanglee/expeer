@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEvidencePackage } from "@/hooks/useEvidencePackage";
-import { useOrder } from "@/hooks/useOrders";
+import { requestDemoDispute, useOrder } from "@/hooks/useOrders";
 import { CounterpartyTrustCard } from "@/components/espeer/CounterpartyTrustCard";
 
 const FIAT_REASONS = [
@@ -58,6 +58,7 @@ function Dispute() {
   const submit = async () => {
     if (!reason) return;
     if (isDemo) {
+      await requestDemoDispute(orderId);
       toast.success("테스트 자료 보존 신청이 완료되었습니다.");
       navigate({ to: "/app/order/$orderId", params: { orderId } });
       return;

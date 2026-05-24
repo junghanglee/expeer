@@ -81,11 +81,10 @@ function NewOffer() {
   const initialAsset = ASSETS.includes(search.asset as OfferAsset)
     ? (search.asset as OfferAsset)
     : "USDC";
-  const initialGive =
-    (search.give as OfferPickerAsset | undefined) ?? (search.side === "buy" ? "KRW" : initialAsset);
-  const initialReceive =
-    (search.receive as OfferPickerAsset | undefined) ??
-    (initialGive === "KRW" ? initialAsset : "KRW");
+  const giveSearch = search.give;
+  const receiveSearch = search.receive;
+  const initialGive = giveSearch ?? (search.side === "buy" ? "KRW" : initialAsset);
+  const initialReceive = receiveSearch ?? (initialGive === "KRW" ? initialAsset : "KRW");
   const [giveAsset, setGiveAsset] = useState<OfferPickerAsset>(initialGive);
   const [receiveAsset, setReceiveAsset] = useState<OfferPickerAsset>(
     initialReceive === initialGive ? "KRW" : initialReceive,
@@ -96,12 +95,15 @@ function NewOffer() {
   const asset = (giveAsset === "KRW" ? receiveAsset : giveAsset) as OfferAsset;
   const tone = side === "buy" ? "success" : "destructive";
   const [network, setNetwork] = useState<string>("Base Sepolia");
+  const initialMaxOrder = search.maxOrder ?? search.coinAmount ?? "1000";
   const [price, setPrice] = useState(search.price ?? "1380");
   const [coinAmount, setCoinAmount] = useState(search.coinAmount ?? "1000");
   const [fiatAmount, setFiatAmount] = useState(search.fiatAmount ?? "1380000");
-  const [orderMode, setOrderMode] = useState<"full" | "partial">("partial");
+  const [orderMode, setOrderMode] = useState<"full" | "partial">(
+    search.minOrder && search.minOrder === initialMaxOrder ? "full" : "partial",
+  );
   const [minOrder, setMinOrder] = useState(search.minOrder ?? "10");
-  const [maxOrder, setMaxOrder] = useState(search.coinAmount ?? "1000");
+  const [maxOrder, setMaxOrder] = useState(initialMaxOrder);
   const [methods, setMethods] = useState<string[]>(["bank_transfer"]);
   const [terms, setTerms] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -222,6 +224,7 @@ function NewOffer() {
         <div className="flex items-center gap-2">
           <Link
             to="/app/selling"
+            search={{ from: "new-offer" }}
             className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface"
           >
             <ArrowLeft className="h-5 w-5" />

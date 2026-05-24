@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { createCryptoSwapOffer, createFiatOffer } from "@/utils/offers.functions";
 import {
+  type Bank,
   type CryptoAsset,
   type CryptoSwapOffer,
   type SwapPair,
@@ -31,6 +32,13 @@ function adStatus(status: string): SwapReqStatus {
   return status === "active" ? "OPEN" : "COMPLETED";
 }
 
+function paymentMethodLabel(method: string): Bank {
+  if (method === "toss") return "토스뱅크";
+  if (method === "kakao_pay") return "카카오뱅크";
+  if (method === "bank_transfer") return "신한";
+  return "신한";
+}
+
 function adToSwapRequest(ad: AdRow, myUserId?: string): SwapRequest | null {
   if (ad.kind !== "fiat") return null;
   const pair = `${ad.asset}/${ad.fiat ?? "KRW"}` as SwapPair;
@@ -47,7 +55,7 @@ function adToSwapRequest(ad: AdRow, myUserId?: string): SwapRequest | null {
     ownerName: ownerName(ad, myUserId),
     ownerIsMerchant: false,
     ownerLevel: 3 as VerificationLevel,
-    banks: [],
+    banks: ad.payment_methods.map(paymentMethodLabel),
     status: adStatus(ad.status),
     createdAt: fmtTs(new Date(ad.created_at)),
     expectedFillSec: ad.expected_fill_sec ?? undefined,

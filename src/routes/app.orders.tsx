@@ -10,14 +10,14 @@ type Tab = "active" | "done" | "dispute" | "cancelled";
 const STATUS_LABEL: Record<OrderStatus, string> = {
   created: "주문 생성",
   info_shared: "정보 공유",
-  paid: "송금/락업 완료",
+  paid: "입금/전송 완료",
   proof_uploaded: "증빙 제출",
-  confirmed: "상대 확인",
-  released: "릴리즈",
-  completed: "완료",
-  cancelled: "취소",
-  disputed: "분쟁",
-  expired: "만료",
+  confirmed: "확인 중",
+  released: "릴리즈 완료",
+  completed: "거래 완료",
+  cancelled: "취소됨",
+  disputed: "분쟁 중",
+  expired: "만료됨",
 };
 
 const STATUS_TONE: Partial<Record<OrderStatus, string>> = {
@@ -25,6 +25,7 @@ const STATUS_TONE: Partial<Record<OrderStatus, string>> = {
   released: "bg-success-soft text-success",
   disputed: "bg-destructive-soft text-destructive",
   created: "bg-primary-soft text-primary",
+  info_shared: "bg-primary-soft text-primary",
   paid: "bg-primary-soft text-primary",
   proof_uploaded: "bg-primary-soft text-primary",
   confirmed: "bg-primary-soft text-primary",
@@ -43,6 +44,13 @@ const ACTIVE: OrderStatus[] = [
 const DONE: OrderStatus[] = ["completed"];
 const DISPUTE: OrderStatus[] = ["disputed"];
 const CANCELLED: OrderStatus[] = ["cancelled", "expired"];
+
+const TAB_LABEL: Record<Tab, string> = {
+  active: "진행 중",
+  done: "완료",
+  dispute: "분쟁",
+  cancelled: "취소",
+};
 
 export const Route = createFileRoute("/app/orders")({
   head: () => ({ meta: [{ title: "주문 — EXPEER" }] }),
@@ -69,15 +77,11 @@ function OrdersList() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`rounded-lg py-2 text-[12px] font-bold transition ${tab === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+              className={`rounded-lg py-2 text-[12px] font-bold transition ${
+                tab === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
             >
-              {t === "active"
-                ? "진행 중"
-                : t === "done"
-                  ? "완료"
-                  : t === "dispute"
-                    ? "분쟁"
-                    : "취소"}
+              {TAB_LABEL[t]}
             </button>
           ))}
         </div>
@@ -85,7 +89,9 @@ function OrdersList() {
 
       <div className="stagger space-y-2.5 px-4 pb-6 pt-2">
         {loading ? (
-          <div className="py-12 text-center text-[12px] text-muted-foreground">불러오는 중…</div>
+          <div className="py-12 text-center text-[12px] text-muted-foreground">
+            주문을 불러오는 중…
+          </div>
         ) : orders.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-surface py-12 text-center text-[13px] text-muted-foreground">
             해당 상태의 주문이 없습니다.
@@ -105,14 +111,20 @@ function tradeKind(order: OrderWithAd) {
 function orderSummary(order: OrderWithAd) {
   if (tradeKind(order) === "crypto") {
     return {
-      title: `${Number(order.amount).toLocaleString("ko-KR", { maximumFractionDigits: 6 })} ${order.asset} → ${Number(order.ads?.to_amount ?? order.fiat_amount).toLocaleString("ko-KR", { maximumFractionDigits: 6 })} ${order.ads?.to_asset ?? order.fiat}`,
+      title: `${Number(order.amount).toLocaleString("ko-KR", { maximumFractionDigits: 6 })} ${
+        order.asset
+      } → ${Number(order.ads?.to_amount ?? order.fiat_amount).toLocaleString("ko-KR", {
+        maximumFractionDigits: 6,
+      })} ${order.ads?.to_asset ?? order.fiat}`,
       sub: "코인 ↔ 코인 교환",
       badge: "P2P교환",
       tone: "bg-primary-soft text-primary",
     };
   }
   return {
-    title: `${Number(order.amount).toLocaleString("ko-KR", { maximumFractionDigits: 4 })} ${order.asset}`,
+    title: `${Number(order.amount).toLocaleString("ko-KR", { maximumFractionDigits: 4 })} ${
+      order.asset
+    }`,
     sub: `${Number(order.fiat_amount).toLocaleString("ko-KR")} ${order.fiat} · ${order.network}`,
     badge: "P2P환전",
     tone: "bg-success-soft text-success",
@@ -127,23 +139,25 @@ function OrderCard({ order }: { order: OrderWithAd }) {
       params={{ orderId: order.id }}
       className="card-lift block rounded-2xl border border-border bg-card p-4"
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${summary.tone}`}>
             {summary.badge}
           </span>
           <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_TONE[order.status] ?? "bg-surface-strong text-foreground"}`}
+            className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+              STATUS_TONE[order.status] ?? "bg-surface-strong text-foreground"
+            }`}
           >
             {STATUS_LABEL[order.status]}
           </span>
         </div>
-        <span className="text-[11px] text-muted-foreground">#{order.id.slice(-4)}</span>
+        <span className="shrink-0 text-[11px] text-muted-foreground">#{order.id.slice(-4)}</span>
       </div>
-      <div className="mt-2 flex items-end justify-between gap-2">
+      <div className="mt-2 flex min-w-0 items-end justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-[15px] font-extrabold text-foreground">{summary.title}</div>
-          <div className="mt-1 text-[11px] text-muted-foreground">{summary.sub}</div>
+          <div className="mt-1 truncate text-[11px] text-muted-foreground">{summary.sub}</div>
         </div>
         <div className="shrink-0 text-right text-[11px] text-muted-foreground">
           {new Date(order.created_at).toLocaleDateString("ko-KR")}

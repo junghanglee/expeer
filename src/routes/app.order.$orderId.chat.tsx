@@ -5,7 +5,7 @@ import { Send, AlertTriangle, Loader2, ShieldAlert, Check } from "lucide-react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { AppHeader } from "@/components/espeer/AppHeader";
 import { useAuth } from "@/lib/auth";
-import { useOrder, markOrderPaid, releaseOrder } from "@/hooks/useOrders";
+import { useOrder, markOrderPaid, releaseOrder, requestDemoDispute } from "@/hooks/useOrders";
 import { useMessages, sendMessage } from "@/hooks/useMessages";
 import { useEscrowVault } from "@/hooks/useEscrowVault";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,7 +99,7 @@ function ChatRoom() {
     );
   }
 
-  const isBuyer = isDemo || user?.id === order.buyer_id;
+  const isBuyer = isDemo ? order.buyer_id === "demo-current-user" : user?.id === order.buyer_id;
   const status = order.status;
   const isCryptoSwap = order.ads?.kind === "crypto_swap";
 
@@ -343,10 +343,17 @@ function ActionBar({
     if (!reason?.trim()) return;
     setBusy("dispute");
     try {
-      await supabase.from("orders").update({ status: "disputed" }).eq("id", order.id);
-      await supabase
-        .from("disputes")
-        .insert({ order_id: order.id, opener_id: userId!, reason: reason.trim(), status: "open" });
+      if (order.id.startsWith("demo-order-")) {
+        await requestDemoDispute(order.id);
+      } else {
+        await supabase.from("orders").update({ status: "disputed" }).eq("id", order.id);
+        await supabase.from("disputes").insert({
+          order_id: order.id,
+          opener_id: userId!,
+          reason: reason.trim(),
+          status: "open",
+        });
+      }
       await sysMsg(`분쟁이 접수되었습니다: ${reason.trim()}`);
       await onOrderChange?.();
       toast.success("분쟁이 접수되었습니다. 운영자가 검토합니다.");

@@ -195,21 +195,29 @@
   .phone-canvas {
     width: 100%;
     max-width: 480px;
+    min-width: 0;
     margin: 0 auto;
     background: var(--color-background);
     height: 100vh;
     height: 100dvh;
     position: relative;
     overflow: hidden;
+    overflow-x: clip;
   }
 
   /* On mobile, the inner content area scrolls while the bottom tab stays fixed. */
   .phone-canvas > div:first-child {
+    min-width: 0;
+    max-width: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     position: relative;
     z-index: 1;
+  }
+
+  .phone-canvas * {
+    min-width: 0;
   }
 
   /* Media inside the phone canvas should never exceed its width. */

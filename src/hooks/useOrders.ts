@@ -412,6 +412,11 @@ export async function requestCancel(id: string, role: "buyer" | "seller", reason
   if (error) throw error;
 }
 
+export async function requestDemoDispute(id: string) {
+  if (!id.startsWith("demo-order-")) return;
+  writeDemoOrderPatch(id, { status: "disputed" });
+}
+
 export async function withdrawCancelRequest(id: string, role: "buyer" | "seller") {
   if (id.startsWith("demo-order-")) {
     writeDemoOrderPatch(

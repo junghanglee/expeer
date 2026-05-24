@@ -122,9 +122,7 @@ function MarketPage() {
 
   const isVisibleByFilters = useCallback(
     (offer: SwapRequest) => {
-      // MVP에서는 법정화폐 P2P 결제수단이 무통장입금 단일 옵션이므로
-      // DB에 은행명이 비어 있는 오퍼도 결제 필터 대상에 포함한다.
-      const matchesPayment = paymentFilter === "all" || true;
+      const matchesPayment = paymentFilter === "all" || offer.banks.length > 0;
       const matchesAmount =
         numericAmountFilter === 0 ||
         ((offer.minOrder ?? 0) <= numericAmountFilter &&
@@ -486,8 +484,8 @@ function OfferCard({
         mode === "mine" ? "border-primary ring-2 ring-primary/30" : "border-border"
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span
             className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
               isSell ? "bg-success-soft text-success" : "bg-destructive-soft text-destructive"
@@ -507,11 +505,11 @@ function OfferCard({
           )}
           <StatusBadge status={req.status} />
         </div>
-        <div className="text-right">
-          <div className="num-display text-[16px] text-foreground">
+        <div className="shrink-0 text-right">
+          <div className="num-display max-w-[118px] truncate text-[16px] text-foreground">
             {req.isMarket ? "시장가" : fmtNum(req.unitPrice)}
           </div>
-          <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+          <div className="flex max-w-[150px] flex-wrap items-center justify-end gap-1 text-[10px] text-muted-foreground">
             <span>
               {quote} / 1 {base}
             </span>
@@ -533,16 +531,16 @@ function OfferCard({
       </div>
 
       <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px]">
-        <div>
+        <div className="min-w-0">
           <div className="text-muted-foreground">잔여 수량</div>
-          <div className="num-display mt-0.5 text-[13px] text-foreground">
+          <div className="num-display mt-0.5 truncate text-[13px] text-foreground">
             {fmtNum(remain)} {base}
           </div>
           <div className="text-[10px] text-muted-foreground">총 {fmtNum(req.amountToken)}</div>
         </div>
-        <div className="text-right">
+        <div className="min-w-0 text-right">
           <div className="text-muted-foreground">주문 한도</div>
-          <div className="num-display mt-0.5 text-[13px] text-foreground">
+          <div className="num-display mt-0.5 truncate text-[13px] text-foreground">
             {formatQuoteAmount(req.minOrder ?? 0, quote)} ~{" "}
             {formatQuoteAmount(req.maxOrder ?? unit * remain, quote)}
           </div>
@@ -566,13 +564,13 @@ function OfferCard({
         </div>
       )}
 
-      <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2 text-[11px]">
-        <div className="flex items-center gap-1.5 text-muted-foreground">
-          {req.ownerIsMerchant && <BadgeCheck className="h-3.5 w-3.5 text-primary" />}
-          <span className="font-semibold text-foreground/80">{req.ownerName}</span>
-          <span className="text-[10px]">Lv.{req.ownerLevel}</span>
+      <div className="mt-2.5 flex min-w-0 items-center justify-between gap-2 border-t border-border pt-2 text-[11px]">
+        <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+          {req.ownerIsMerchant && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-primary" />}
+          <span className="truncate font-semibold text-foreground/80">{req.ownerName}</span>
+          <span className="shrink-0 text-[10px]">Lv.{req.ownerLevel}</span>
         </div>
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+        <div className="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
           {bankLabels.slice(0, 2).map((b) => (
             <span key={b} className="rounded bg-surface px-1.5 py-0.5">
               {b}
@@ -594,9 +592,9 @@ function OfferCard({
             </button>
           ) : (
             <div className="mt-3 rounded-xl bg-surface p-3">
-              <div className="flex items-center justify-between text-[11px] font-bold text-foreground">
-                <span>구매 수량 선택</span>
-                <span className="num-display text-[14px] text-primary">
+              <div className="flex min-w-0 items-center justify-between gap-2 text-[11px] font-bold text-foreground">
+                <span className="shrink-0">구매 수량 선택</span>
+                <span className="num-display truncate text-[14px] text-primary">
                   {fmtNum(pick)} {base}
                 </span>
               </div>
@@ -631,11 +629,11 @@ function OfferCard({
                 ))}
               </div>
 
-              <div className="mt-3 flex items-center justify-between rounded-lg bg-card px-3 py-2">
-                <span className="text-[11px] font-semibold text-muted-foreground">
+              <div className="mt-3 flex min-w-0 items-center justify-between gap-2 rounded-lg bg-card px-3 py-2">
+                <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
                   {mode === "take-buy" ? "지불 금액" : "수령 금액"}
                 </span>
-                <span className="num-display text-[14px] text-foreground">
+                <span className="num-display truncate text-right text-[14px] text-foreground">
                   {formatQuoteAmount(totalQuote, quote)}
                 </span>
               </div>

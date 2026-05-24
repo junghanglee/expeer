@@ -68,8 +68,8 @@ function OrderDetail() {
   if (pathname !== `/app/order/${order.id}`) return <Outlet />;
 
   const isDemo = order.id.startsWith("demo-order-");
-  const isBuyer = isDemo || user?.id === order.buyer_id;
-  const isSeller = user?.id === order.seller_id;
+  const isBuyer = isDemo ? order.buyer_id === "demo-current-user" : user?.id === order.buyer_id;
+  const isSeller = isDemo ? order.seller_id === "demo-current-user" : user?.id === order.seller_id;
   const isCryptoSwap = order.ads?.kind === "crypto_swap";
   const counterpartId = isBuyer ? order.seller_id : isSeller ? order.buyer_id : undefined;
   const status = order.status;
@@ -86,10 +86,6 @@ function OrderDetail() {
     : order.seller_cancel_requested_at;
 
   const run = async (fn: () => Promise<void>, ok: string) => {
-    if (isDemo) {
-      toast.success("테스트 주문에서는 화면 흐름만 확인합니다.");
-      return;
-    }
     setBusy(true);
     try {
       await fn();

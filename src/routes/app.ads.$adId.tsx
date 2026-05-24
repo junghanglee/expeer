@@ -28,6 +28,16 @@ function paymentLabel(method: string) {
   return method;
 }
 
+function demoSellerName(id: string) {
+  const names: Record<string, string> = {
+    "demo-sell-usdt-1": "강남환전상",
+    "demo-sell-usdt-2": "빠른USDT",
+    "demo-buy-usdt-1": "기업매수팀",
+    "demo-sell-usdc-1": "USDC데스크",
+  };
+  return names[id];
+}
+
 function OfferDetail() {
   const { adId } = Route.useParams();
   const { offer, loading } = useOffer(adId);
@@ -66,6 +76,10 @@ function OfferDetail() {
   }
 
   const isSell = offer.side === "sell";
+  const sellerName = seller?.nickname ?? demoSellerName(offer.id) ?? "사용자";
+  const tradeCount = seller?.trade_count ?? (offer.id.startsWith("demo-") ? 128 : 0);
+  const rating = Number(seller?.rating ?? (offer.id.startsWith("demo-") ? 4.9 : 0));
+  const kycApproved = seller?.kyc_status === "approved" || offer.id.startsWith("demo-");
 
   return (
     <PhoneShell hideTab>
@@ -74,15 +88,15 @@ function OfferDetail() {
       <div className="px-5 pt-2">
         <div className="flex items-center gap-2">
           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-soft font-extrabold text-primary">
-            {(seller?.nickname ?? "?").slice(0, 1)}
+            {sellerName.slice(0, 1)}
           </div>
           <div className="flex-1">
             <div className="text-[15px] font-bold text-foreground">
-              {seller?.nickname ?? "사용자"}
+              {sellerName}
             </div>
             <div className="mt-0.5 text-[11px] text-muted-foreground">
-              거래 {seller?.trade_count ?? 0}건 · 평점 {Number(seller?.rating ?? 0).toFixed(1)}
-              {seller?.kyc_status === "approved" && " · KYC 완료"}
+              거래 {tradeCount}건 · 평점 {rating.toFixed(1)}
+              {kycApproved && " · KYC 완료"}
             </div>
           </div>
           <span

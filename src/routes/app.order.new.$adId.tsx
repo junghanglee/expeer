@@ -243,8 +243,8 @@ function NewOrder() {
       <div className="px-5 pt-2">
         {isDemoOffer && (
           <div className="mb-3 rounded-2xl border border-success bg-success-soft p-3 text-[12px] font-semibold leading-relaxed text-success">
-            테스트 오퍼입니다. 계좌/지갑 등록 없이 금액만 입력해 주문 생성 → 채팅방 → 상세/증빙
-            흐름을 확인할 수 있습니다.
+            테스트 오퍼입니다. 계좌/지갑 등록 없이 금액만 입력해 주문 생성 → 주문 상세 → 채팅방
+            → 증빙 흐름을 확인할 수 있습니다.
           </div>
         )}
         <div className="rounded-2xl border border-primary bg-primary-soft p-3">
@@ -402,8 +402,8 @@ function NewOrder() {
             <span className="text-[12px] font-extrabold text-foreground">거래 안전 확인</span>
           </div>
           <ul className="mt-2 space-y-1 text-[11px]">
-            <Check ok={!!profile?.phone} text="휴대폰 번호 등록" />
-            <Check ok={profile?.kyc_status === "approved"} text="기본 인증 완료" />
+            <Check ok={isDemoOffer || !!profile?.phone} text="휴대폰 번호 등록" />
+            <Check ok={isDemoOffer || profile?.kyc_status === "approved"} text="기본 인증 완료" />
             <Check ok text="상대방 블랙리스트 자동 확인" />
           </ul>
           <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
@@ -451,7 +451,7 @@ function NewOrder() {
           </div>
           <ul className="mt-2 space-y-1 text-[11px]">
             <Check ok={amountValid} text="거래 한도와 남은 수량 안의 금액" />
-            <Check ok={!!profile?.phone} text="휴대폰 번호 등록" />
+            <Check ok={isDemoOffer || !!profile?.phone} text="휴대폰 번호 등록" />
             <Check ok={bankOk} text="계좌 선택" />
             {isBuy && <Check ok={walletOk} text="받을 지갑 선택" />}
           </ul>
