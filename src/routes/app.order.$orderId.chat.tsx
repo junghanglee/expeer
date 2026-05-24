@@ -44,6 +44,8 @@ function ChatRoom() {
   const { user } = useAuth();
   const { order, loading: orderLoading, refresh: refreshOrder } = useOrder(orderId);
   const { messages, loading: msgLoading, refresh: refreshMessages } = useMessages(orderId);
+  const isDemo = orderId.startsWith("demo-order-");
+  const actorId = isDemo ? "demo-current-user" : user?.id;
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [counterpartyName, setCounterpartyName] = useState<string>("");
@@ -55,7 +57,12 @@ function ChatRoom() {
 
   useEffect(() => {
     (async () => {
-      if (!order || !user) return;
+      if (!order) return;
+      if (isDemo) {
+        setCounterpartyName("EXPEER 테스트 상대");
+        return;
+      }
+      if (!user) return;
       const otherId = user.id === order.buyer_id ? order.seller_id : order.buyer_id;
       const { data } = await supabase
         .from("profiles")
@@ -64,15 +71,15 @@ function ChatRoom() {
         .maybeSingle();
       setCounterpartyName(data?.nickname || data?.email?.split("@")[0] || "거래 상대");
     })();
-  }, [order, user]);
+  }, [order, user, isDemo]);
 
   const send = async () => {
-    if (!input.trim() || !user || !order || sending) return;
+    if (!input.trim() || !actorId || !order || sending) return;
     const text = input.trim();
     setInput("");
     setSending(true);
     try {
-      await sendMessage(order.id, user.id, text);
+      await sendMessage(order.id, actorId, text);
       await refreshMessages();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "전송 실패");
@@ -92,7 +99,7 @@ function ChatRoom() {
     );
   }
 
-  const isBuyer = user?.id === order.buyer_id;
+  const isBuyer = isDemo || user?.id === order.buyer_id;
   const status = order.status;
   const isCryptoSwap = order.ads?.kind === "crypto_swap";
 
@@ -121,7 +128,7 @@ function ChatRoom() {
       <ActionBar
         order={order}
         isBuyer={isBuyer}
-        userId={user?.id}
+        userId={actorId}
         onOrderChange={refreshOrder}
         isCryptoSwap={isCryptoSwap}
       />
@@ -137,7 +144,7 @@ function ChatRoom() {
           </div>
         ) : (
           messages.map((m) => {
-            const mine = m.sender_id === user?.id;
+            const mine = m.sender_id === actorId;
             return (
               <div
                 key={m.id}

@@ -653,7 +653,13 @@ function OfferCard({
                   취소
                 </button>
                 <button
-                  onClick={() => navigate({ to: "/app/order/new/$adId", params: { adId: req.id } })}
+                  onClick={() =>
+                    navigate({
+                      to: "/app/order/new/$adId",
+                      params: { adId: req.id },
+                      search: { amount: pick },
+                    })
+                  }
                   className={`flex-2 flex-1 rounded-xl py-2 text-[12px] font-extrabold ${actionTone}`}
                 >
                   {pick === remain ? "전체" : "부분"}{" "}

@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import type { Tables, TablesInsert, Enums } from "@/integrations/supabase/types";
+import { demoSwapRequests } from "@/data/offerStore";
+import type { SwapRequest } from "@/data/format";
 
 export type Offer = Tables<"ads">;
 export type OfferSide = Enums<"ad_side">;
@@ -120,6 +122,37 @@ export function useOffers(filters: OfferFilters = {}) {
   return { offers, loading, refresh: load };
 }
 
+function swapRequestToOffer(req: SwapRequest): Offer {
+  const [asset, fiat = "KRW"] = req.pair.split("/");
+  const now = new Date().toISOString();
+  return {
+    id: req.id,
+    side: req.side,
+    asset,
+    fiat,
+    price: req.unitPrice,
+    available_amount: Math.max(0, req.amountToken - req.filledToken),
+    total_amount: req.amountToken,
+    min_order: req.minOrder,
+    max_order: req.maxOrder,
+    terms: req.terms,
+    user_id: req.ownerId ?? "demo-merchant",
+    created_at: now,
+    updated_at: now,
+    status: "active",
+    kind: "fiat",
+    network: "Base Sepolia",
+    payment_methods: req.banks,
+    is_market: req.isMarket,
+    expected_fill_sec: req.expectedFillSec ?? null,
+    filled_amount: req.filledToken,
+    premium_pct: null,
+    to_amount: null,
+    to_asset: null,
+    to_network: null,
+  } as Offer;
+}
+
 export function useOffer(id: string | undefined) {
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,7 +170,8 @@ export function useOffer(id: string | undefined) {
     }
     setLoading(true);
     const { data } = await supabase.from("ads").select("*").eq("id", id).maybeSingle();
-    setOffer(data ?? null);
+    const demoReq = demoSwapRequests().find((req) => req.id === id);
+    setOffer(data ?? (demoReq ? swapRequestToOffer(demoReq) : null));
     setLoading(false);
   }, [id]);
 

@@ -86,7 +86,7 @@ function adToCryptoSwap(ad: AdRow, myUserId?: string): CryptoSwapOffer | null {
   };
 }
 
-function demoSwapRequests(myUserId?: string): SwapRequest[] {
+export function demoSwapRequests(myUserId?: string): SwapRequest[] {
   const now = Date.now();
   return [
     {

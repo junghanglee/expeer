@@ -37,6 +37,31 @@ function applyDemoOrderPatch(order: OrderWithAd): OrderWithAd {
   return { ...order, ...(readDemoOrderPatches()[order.id] ?? {}) };
 }
 
+function statusMatches(order: OrderWithAd, status?: OrderStatus | OrderStatus[]) {
+  if (!status) return true;
+  return Array.isArray(status) ? status.includes(order.status) : order.status === status;
+}
+
+function roleMatches(order: OrderWithAd, userId: string, role: "buyer" | "seller" | "any") {
+  if (role === "buyer") return order.buyer_id === userId;
+  if (role === "seller") return order.seller_id === userId;
+  return order.buyer_id === userId || order.seller_id === userId;
+}
+
+function demoOrders(myUserId = "demo-current-user") {
+  return [
+    makeDemoOrder("demo-order-sell-usdc-1"),
+    makeDemoOrder("demo-order-buy-usdt-1"),
+  ]
+    .filter((order): order is OrderWithAd => !!order)
+    .map((order) => ({
+      ...order,
+      buyer_id: order.buyer_id === "demo-current-user" ? myUserId : order.buyer_id,
+      seller_id: order.seller_id === "demo-current-user" ? myUserId : order.seller_id,
+    }))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
 function makeDemoOrder(id: string): OrderWithAd | null {
   if (!id.startsWith("demo-order-")) return null;
   const adId = id.replace(/^demo-order-/, "demo-");
@@ -107,7 +132,10 @@ export function useOrders(filters: OrderFilters = {}) {
 
   const load = useCallback(async () => {
     if (!user) {
-      setOrders([]);
+      const demo = demoOrders().filter(
+        (order) => statusMatches(order, status) && roleMatches(order, "demo-current-user", role),
+      );
+      setOrders(demo);
       setLoading(false);
       return;
     }
@@ -124,7 +152,10 @@ export function useOrders(filters: OrderFilters = {}) {
       else q = q.eq("status", status);
     }
     const { data } = await q;
-    setOrders((data ?? []) as OrderWithAd[]);
+    const demo = demoOrders(user.id).filter(
+      (order) => statusMatches(order, status) && roleMatches(order, user.id, role),
+    );
+    setOrders([...(demo ?? []), ...((data ?? []) as OrderWithAd[])]);
     setLoading(false);
   }, [user, role, status]);
 
@@ -168,7 +199,15 @@ export function useOrder(id: string | undefined) {
 export async function createOrder(input: TablesInsert<"orders">, accessToken?: string) {
   if (input.ad_id.startsWith("demo-")) {
     const id = `demo-order-${input.ad_id.replace(/^demo-/, "")}`;
-    writeDemoOrderPatch(id, { status: "created", created_at: new Date().toISOString() });
+    const now = new Date().toISOString();
+    writeDemoOrderPatch(id, {
+      ...input,
+      id,
+      status: "created",
+      created_at: now,
+      updated_at: now,
+      payment_metadata: { demo: true },
+    } as Partial<OrderWithAd>);
     return makeDemoOrder(id) as Order;
   }
 

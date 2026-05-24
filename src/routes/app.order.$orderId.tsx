@@ -245,6 +245,21 @@ function OrderDetail() {
             {isCryptoSwap ? "전송 준비 완료 표시" : "입금 완료 표시"}
           </button>
         )}
+        {isBuyer && (status === "paid" || status === "proof_uploaded") && (
+          <button
+            disabled={busy}
+            onClick={() => navigate({ to: "/app/order/$orderId/proof", params: { orderId } })}
+            className="block w-full rounded-xl border border-primary bg-primary-soft py-3 text-center text-[13px] font-bold text-primary"
+          >
+            {status === "proof_uploaded"
+              ? isCryptoSwap
+                ? "교환 증빙 다시 확인"
+                : "입금증 다시 확인"
+              : isCryptoSwap
+                ? "교환 증빙 제출하기"
+                : "입금증 제출하기"}
+          </button>
+        )}
         {(status === "created" || status === "info_shared") && (isBuyer || isSeller) && (
           <button
             disabled={busy}

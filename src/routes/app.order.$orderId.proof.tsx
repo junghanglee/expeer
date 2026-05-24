@@ -22,9 +22,31 @@ export const Route = createFileRoute("/app/order/$orderId/proof")({
   component: Proof,
 });
 
+const DEMO_PROOFS_KEY = "expeer.demo.proofs.v1";
+
+function canUseLocalStorage() {
+  return typeof window !== "undefined" && !!window.localStorage;
+}
+
+function readDemoProofStore(): Record<string, ProofRow[]> {
+  if (!canUseLocalStorage()) return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(DEMO_PROOFS_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeDemoProof(orderId: string, proof: ProofRow) {
+  if (!canUseLocalStorage()) return;
+  const store = readDemoProofStore();
+  store[orderId] = [proof, ...(store[orderId] ?? [])];
+  window.localStorage.setItem(DEMO_PROOFS_KEY, JSON.stringify(store));
+}
+
 function demoProofs(orderId: string): ProofRow[] {
   if (!orderId.startsWith("demo-order-")) return [];
-  return [
+  const seed = [
     {
       id: `${orderId}-proof-1`,
       image_url: "demo-bank-transfer-proof.png",
@@ -33,6 +55,7 @@ function demoProofs(orderId: string): ProofRow[] {
       created_at: new Date(Date.now() - 60_000).toISOString(),
     },
   ];
+  return [...(readDemoProofStore()[orderId] ?? []), ...seed];
 }
 
 function Proof() {
@@ -70,19 +93,22 @@ function Proof() {
 
   const handleUpload = async (file?: File) => {
     if (isDemo) {
+      const demoProof = {
+        id: `${orderId}-proof-${Date.now()}`,
+        image_url: file?.name || "demo-upload-proof.png",
+        amount: order ? Number(isCryptoSwap ? order.amount : order.fiat_amount) : null,
+        note:
+          note ||
+          (isCryptoSwap
+            ? "테스트 업로드 증빙: tx hash와 지갑 주소 확인"
+            : "테스트 업로드 증빙: 입금자명과 금액 확인"),
+        created_at: new Date().toISOString(),
+      };
+      writeDemoProof(orderId, demoProof);
       await markProofUploaded(orderId);
       await refresh();
       toast.success("테스트 증빙이 추가된 것처럼 표시합니다.");
-      setProofs((prev) => [
-        {
-          id: `${orderId}-proof-${Date.now()}`,
-          image_url: file?.name || "demo-upload-proof.png",
-          amount: order ? Number(order.fiat_amount) : null,
-          note: note || "테스트 업로드 증빙",
-          created_at: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
+      setProofs(demoProofs(orderId));
       setNote("");
       return;
     }

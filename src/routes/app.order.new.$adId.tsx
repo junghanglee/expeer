@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Loader2, ScanLine, ShieldCheck } from "lucide-react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
 import { AppHeader } from "@/components/espeer/AppHeader";
@@ -15,9 +15,27 @@ import { useFeeSettings } from "@/hooks/useAppSettings";
 import { networkToChain } from "@/lib/escrow";
 import { checkTradeApproval } from "@/utils/tradeApproval.functions";
 import { toast } from "sonner";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/app/order/new/$adId")({
+  validateSearch: z.object({
+    amount: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((value) => {
+        if (value === undefined) return undefined;
+        if (typeof value === "number") return Number.isFinite(value) ? String(value) : undefined;
+        let parsed = value;
+        try {
+          parsed = value.startsWith('"') ? JSON.parse(value) : value;
+        } catch {
+          return undefined;
+        }
+        const amount = Number(parsed);
+        return Number.isFinite(amount) && amount > 0 ? String(amount) : undefined;
+      }),
+  }),
   head: () => ({ meta: [{ title: "주문 생성 — EXPEER" }] }),
   component: NewOrder,
 });
@@ -28,6 +46,7 @@ function fmtNum(n: number, d = 4) {
 
 function NewOrder() {
   const { adId } = Route.useParams();
+  const { amount: amountSearch } = Route.useSearch();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { profile } = useProfile();
@@ -44,7 +63,15 @@ function NewOrder() {
     [wallets, offer?.asset, offer?.network],
   );
   const defaultFiat = offer ? String(Number(offer.min_order)) : "";
-  const [fiatStr, setFiatStr] = useState<string>(isDemoOffer ? defaultFiat : "");
+  const amountFiat =
+    offer && amountSearch ? Math.round(Number(amountSearch) * Number(offer.price)) : 0;
+  const suggestedFiat = amountFiat > 0 ? String(amountFiat) : isDemoOffer ? defaultFiat : "";
+  const [fiatStr, setFiatStr] = useState<string>(suggestedFiat);
+
+  useEffect(() => {
+    if (suggestedFiat && !fiatStr) setFiatStr(suggestedFiat);
+  }, [suggestedFiat, fiatStr]);
+
   const fiatNum = parseInt(fiatStr.replace(/\D/g, "") || "0", 10);
   const tokens = offer ? fiatNum / Number(offer.price) : 0;
   const remainingToken = Number(offer?.available_amount ?? 0);
