@@ -112,14 +112,14 @@ function ChatRoom() {
           <Link
             to="/app/order/$orderId"
             params={{ orderId: order.id }}
-            className="text-[12px] font-bold text-primary"
+            className="shrink-0 text-[12px] font-bold text-primary"
           >
             상세
           </Link>
         }
       />
 
-      <div className="bg-warning-soft px-4 py-2 text-[11px] font-medium text-warning-foreground">
+      <div className="min-w-0 overflow-hidden break-words bg-warning-soft px-4 py-2 text-[11px] font-medium text-warning-foreground">
         <AlertTriangle className="mr-1 inline h-3 w-3" />
         거래 조건·계좌·지갑 변경 요청은 반드시 여기서 확인하세요. 모든 대화는 증빙으로 보존됩니다.
       </div>
@@ -151,7 +151,7 @@ function ChatRoom() {
                 className={`flex ${mine ? "justify-end" : "justify-start"} anim-fade-up`}
               >
                 <div
-                  className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-[13px] ${mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-surface text-foreground"}`}
+                  className={`max-w-[78%] overflow-hidden rounded-2xl px-3.5 py-2 text-[13px] ${mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-surface text-foreground"}`}
                 >
                   <div className="whitespace-pre-wrap break-words">{m.content}</div>
                   <div
@@ -168,7 +168,7 @@ function ChatRoom() {
       </div>
 
       <div className="sticky bottom-0 z-10 border-t border-border bg-background px-3 py-2.5">
-        <div className="flex items-center gap-2 rounded-full bg-surface px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2 rounded-full bg-surface px-3 py-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -180,12 +180,12 @@ function ChatRoom() {
             }}
             placeholder="메시지를 입력하세요"
             disabled={sending}
-            className="flex-1 bg-transparent text-[13px] focus:outline-none disabled:opacity-50"
+            className="min-w-0 flex-1 bg-transparent text-[13px] focus:outline-none disabled:opacity-50"
           />
           <button
             onClick={send}
             disabled={sending || !input.trim()}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-50"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-50"
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </button>
@@ -206,23 +206,23 @@ function StatusCard({
 }) {
   if (status === "disputed") {
     return (
-      <div className="mx-4 mt-3 rounded-xl border border-destructive bg-destructive-soft p-3">
-        <div className="flex items-center gap-2 text-[12px] font-bold text-destructive">
-          <ShieldAlert className="h-4 w-4" /> 분쟁이 진행 중입니다
+      <div className="mx-4 mt-3 overflow-hidden break-words rounded-xl border border-destructive bg-destructive-soft p-3">
+        <div className="flex min-w-0 items-center gap-2 text-[12px] font-bold text-destructive">
+          <ShieldAlert className="h-4 w-4 shrink-0" /> 분쟁이 진행 중입니다
         </div>
       </div>
     );
   }
   if (status === "completed" || status === "released") {
     return (
-      <div className="mx-4 mt-3 rounded-xl border border-success bg-success-soft p-3 text-[12px] font-bold text-success">
+      <div className="mx-4 mt-3 overflow-hidden break-words rounded-xl border border-success bg-success-soft p-3 text-[12px] font-bold text-success">
         <Check className="mr-1 inline h-4 w-4" /> 거래가 완료되었습니다
       </div>
     );
   }
   if (status === "cancelled" || status === "expired") {
     return (
-      <div className="mx-4 mt-3 rounded-xl bg-surface p-3 text-[12px] font-bold text-muted-foreground">
+      <div className="mx-4 mt-3 overflow-hidden break-words rounded-xl bg-surface p-3 text-[12px] font-bold text-muted-foreground">
         주문이 종료되었습니다 ({STATUS_LABEL[status]})
       </div>
     );
@@ -242,7 +242,7 @@ function StatusCard({
             : "입금을 확인한 뒤 코인을 릴리즈해 주세요."
         : "거래가 진행 중입니다.";
   return (
-    <div className="mx-4 mt-3 rounded-xl border border-primary bg-primary-soft p-3 text-[12px] font-medium text-foreground">
+    <div className="mx-4 mt-3 overflow-hidden break-words rounded-xl border border-primary bg-primary-soft p-3 text-[12px] font-medium text-foreground">
       {msg}
     </div>
   );
@@ -373,12 +373,12 @@ function ActionBar({
   if (!showBuyerPay && !showSellerRel && !showDispute) return null;
 
   return (
-    <div className="mx-4 mt-2 flex flex-col gap-2">
+    <div className="mx-4 mt-2 flex min-w-0 flex-col gap-2">
       {showBuyerPay && (
         <button
           onClick={onBuyerMarkPaid}
           disabled={busy !== null}
-          className="rounded-xl bg-primary py-3 text-[13px] font-bold text-primary-foreground disabled:opacity-50"
+          className="min-w-0 whitespace-normal break-words rounded-xl bg-primary px-3 py-3 text-[13px] font-bold text-primary-foreground disabled:opacity-50"
         >
           {busy === "paid"
             ? "처리 중..."
@@ -391,7 +391,7 @@ function ActionBar({
         <button
           onClick={onSellerConfirmAndRelease}
           disabled={busy !== null || escrow.busy}
-          className="rounded-xl bg-success py-3 text-[13px] font-bold text-white disabled:opacity-50"
+          className="min-w-0 whitespace-normal break-words rounded-xl bg-success px-3 py-3 text-[13px] font-bold text-white disabled:opacity-50"
         >
           {busy === "release" || escrow.busy
             ? "릴리즈 중..."
@@ -404,13 +404,13 @@ function ActionBar({
         <button
           onClick={onDispute}
           disabled={busy !== null}
-          className="rounded-xl border border-destructive bg-destructive-soft py-2.5 text-[12px] font-bold text-destructive disabled:opacity-50"
+          className="min-w-0 whitespace-normal break-words rounded-xl border border-destructive bg-destructive-soft px-3 py-2.5 text-[12px] font-bold text-destructive disabled:opacity-50"
         >
           {busy === "dispute" ? "접수 중..." : "분쟁 신청"}
         </button>
       )}
       {showSellerRel && (
-        <p className="text-[10.5px] leading-snug text-muted-foreground">
+        <p className="break-words text-[10.5px] leading-snug text-muted-foreground">
           반드시 본인 통장/지갑에서 금액과 주소를 직접 확인한 뒤 릴리즈하세요. 완료 후에는 되돌리기
           어렵습니다.
         </p>

@@ -24,12 +24,12 @@ export function BigNumber({
           ? "text-destructive"
           : "text-foreground";
   return (
-    <div>
-      <div className={`num-display ${sizeCls} ${toneCls}`}>
+    <div className="min-w-0 overflow-hidden">
+      <div className={`num-display min-w-0 break-words ${sizeCls} ${toneCls}`}>
         {value}
-        {unit && <span className="ml-1 text-base font-bold text-muted-foreground">{unit}</span>}
+        {unit && <span className="ml-1 break-words text-base font-bold text-muted-foreground">{unit}</span>}
       </div>
-      {caption && <div className="mt-1 text-[12px] text-muted-foreground">{caption}</div>}
+      {caption && <div className="mt-1 break-words text-[12px] text-muted-foreground">{caption}</div>}
     </div>
   );
 }

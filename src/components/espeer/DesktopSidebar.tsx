@@ -1,6 +1,15 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Logo } from "./Logo";
-import { ArrowLeftRight, Bell, ListOrdered, LogOut, Megaphone, User, Wallet } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Bell,
+  ListOrdered,
+  LogOut,
+  Megaphone,
+  Repeat2,
+  Settings,
+  Wallet,
+} from "lucide-react";
 import type { ComponentType } from "react";
 import { useAuth } from "@/lib/auth";
 
@@ -8,24 +17,54 @@ type NavItem = {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string; strokeWidth?: number }>;
+  activeWhen?: (pathname: string) => boolean;
 };
 
+const isPath = (pathname: string, path: string) =>
+  pathname === path || pathname.startsWith(`${path}/`);
+
 const primary: NavItem[] = [
-  { to: "/app/market", label: "P2P", icon: ArrowLeftRight },
-  { to: "/app/selling", label: "내 오퍼", icon: Megaphone },
-  { to: "/app/orders", label: "주문", icon: ListOrdered },
+  {
+    to: "/app/market",
+    label: "P2P환전",
+    icon: ArrowLeftRight,
+    activeWhen: (pathname) =>
+      isPath(pathname, "/app/market") ||
+      isPath(pathname, "/app/ads") ||
+      isPath(pathname, "/app/order/new") ||
+      isPath(pathname, "/app/selling"),
+  },
+  {
+    to: "/app/swap",
+    label: "P2P교환",
+    icon: Repeat2,
+    activeWhen: (pathname) => isPath(pathname, "/app/swap"),
+  },
+  {
+    to: "/app/orders",
+    label: "주문",
+    icon: ListOrdered,
+    activeWhen: (pathname) =>
+      isPath(pathname, "/app/orders") ||
+      (isPath(pathname, "/app/order") && !isPath(pathname, "/app/order/new")),
+  },
   { to: "/app/profile", label: "지갑·계좌", icon: Wallet },
-  { to: "/app/settings", label: "내 정보", icon: User },
+  { to: "/app/settings", label: "설정·더보기", icon: Settings },
 ];
 
-const secondary: NavItem[] = [{ to: "/app/notifications", label: "알림", icon: Bell }];
+const secondary: NavItem[] = [
+  { to: "/app/selling", label: "내 오퍼 관리", icon: Megaphone },
+  { to: "/app/notifications", label: "알림", icon: Bell },
+];
 
 export function DesktopSidebar() {
   const { pathname } = useLocation();
   const { user, signOut } = useAuth();
 
   const renderItem = (it: NavItem, featured = false) => {
-    const active = pathname === it.to || pathname.startsWith(it.to + "/");
+    const active = it.activeWhen
+      ? it.activeWhen(pathname)
+      : pathname === it.to || pathname.startsWith(it.to + "/");
     const Icon = it.icon;
     if (featured) {
       return (

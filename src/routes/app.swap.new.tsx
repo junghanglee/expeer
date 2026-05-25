@@ -18,7 +18,7 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/app/swap/new")({
   validateSearch: searchSchema,
-  head: () => ({ meta: [{ title: "교환 오퍼 등록 — EXPEER" }] }),
+  head: () => ({ meta: [{ title: "P2P교환 오퍼 등록 — EXPEER" }] }),
   component: NewSwapOffer,
 });
 
@@ -174,7 +174,7 @@ function NewSwapOffer() {
         isMine: true,
       };
       await saveCryptoSwap(user.id, offer);
-      toast.success("교환 오퍼가 등록되었습니다.");
+      toast.success("P2P교환 오퍼가 등록되었습니다.");
       navigate({ to: "/app/swap" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "등록 실패");
@@ -193,9 +193,9 @@ function NewSwapOffer() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div className="leading-tight">
-          <div className="text-[15px] font-extrabold text-foreground">교환 오퍼 등록</div>
+          <div className="text-[15px] font-extrabold text-foreground">P2P교환 오퍼 등록</div>
           <div className="text-[10px] font-semibold text-muted-foreground">
-            코인 간 P2P 교환 조건
+            코인 간 P2P교환 조건
           </div>
         </div>
       </header>
@@ -305,7 +305,7 @@ function NewSwapOffer() {
           {submitting ? (
             <Loader2 className="mx-auto h-5 w-5 animate-spin" />
           ) : valid ? (
-            "교환 오퍼 등록"
+            "P2P교환 오퍼 등록"
           ) : (
             "입력값을 확인해 주세요"
           )}

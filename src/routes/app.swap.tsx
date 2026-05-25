@@ -1,7 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
-import { ArrowLeftRight, ArrowLeft, BadgeCheck, Plus, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowLeft,
+  BadgeCheck,
+  Clock,
+  Plus,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import {
   ASSET_META,
   COIN_PRICE_USD,
@@ -15,8 +23,11 @@ import { useLivePrices } from "@/hooks/useLivePrices";
 export const Route = createFileRoute("/app/swap")({
   head: () => ({
     meta: [
-      { title: "교환 — EXPEER" },
-      { name: "description", content: "코인 간 P2P 교환 오퍼를 찾고 직접 조건을 등록합니다." },
+      { title: "P2P교환 — EXPEER" },
+      {
+        name: "description",
+        content: "코인 간 P2P교환 오퍼를 메인 화면에서 찾고 조건을 조정합니다.",
+      },
     ],
   }),
   component: SwapPage,
@@ -178,9 +189,9 @@ function SwapPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div className="leading-tight">
-            <div className="text-[15px] font-extrabold text-foreground">교환</div>
+            <div className="text-[15px] font-extrabold text-foreground">P2P교환</div>
             <div className="truncate text-[10px] font-semibold text-muted-foreground">
-              코인 간 P2P 교환
+              코인 간 P2P교환
             </div>
           </div>
         </div>
@@ -270,7 +281,7 @@ function SwapPage() {
             <label className="rounded-xl border border-border bg-card px-3 py-2">
               <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
                 <span>{giveAsset} 수량 입력</span>
-                <span>교환</span>
+                <span>메인 조건</span>
               </div>
               <input
                 value={giveAmount}
@@ -289,13 +300,34 @@ function SwapPage() {
             </div>
           </div>
 
-          <Link
-            to="/app/swap/new"
-            search={{ give: giveAsset, receive: receiveAsset, amount: giveAmount }}
-            className="flex h-10 items-center justify-center gap-1 rounded-xl bg-foreground px-3 text-[12px] font-extrabold text-background"
-          >
-            <Plus className="h-3.5 w-3.5" /> 교환 오퍼 등록
-          </Link>
+          <div className="rounded-xl border border-primary-soft bg-primary-soft/40 px-3 py-2">
+            <div className="text-[12px] font-extrabold text-foreground">P2P교환 메인 조건 설정</div>
+            <div className="mt-1 text-[10px] font-semibold leading-relaxed text-muted-foreground">
+              코인·수량·정렬을 이 화면에서 먼저 맞추면 아래 오퍼와 내 오퍼/완료 목록이 바로
+              갱신됩니다. 등록한 오퍼와 체결 주문은 주문 메뉴에서도 이어서 확인할 수 있습니다.
+            </div>
+            <Link
+              to="/app/swap/new"
+              search={{ give: giveAsset, receive: receiveAsset, amount: giveAmount }}
+              className="mt-2 flex h-9 items-center justify-center gap-1 rounded-xl bg-foreground px-3 text-[12px] font-extrabold text-background"
+            >
+              <Plus className="h-3.5 w-3.5" /> 현재 조건으로 오퍼 등록
+            </Link>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Link
+                to="/app/orders"
+                className="flex h-9 items-center justify-center gap-1 rounded-xl bg-card px-3 text-[12px] font-extrabold text-foreground"
+              >
+                <Clock className="h-3.5 w-3.5" /> 주문 관리
+              </Link>
+              <Link
+                to="/app/market"
+                className="flex h-9 items-center justify-center gap-1 rounded-xl bg-primary-soft px-3 text-[12px] font-extrabold text-primary"
+              >
+                P2P환전
+              </Link>
+            </div>
+          </div>
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-2">
@@ -377,7 +409,7 @@ function SwapPage() {
               />
             ))
           ) : (
-            <EmptyBox text="등록한 교환 오퍼가 없습니다." />
+            <EmptyBox text="등록한 P2P교환 오퍼가 없습니다." />
           )}
         </div>
       )}
@@ -396,7 +428,7 @@ function SwapPage() {
               />
             ))
           ) : (
-            <EmptyBox text="완료된 교환 오퍼가 없습니다." />
+            <EmptyBox text="완료된 P2P교환 오퍼가 없습니다." />
           )}
         </div>
       )}
@@ -499,8 +531,9 @@ function SwapOfferCard({
           to="/app/swap/order/new/$offerId"
           params={{ offerId: offer.id }}
           className={`rounded-lg px-2.5 py-1.5 text-[12px] font-extrabold ${mode === "take" && !offer.isMine ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground"}`}
+          aria-label="선택한 P2P교환 오퍼 상세 주문으로 이동"
         >
-          {offer.isMine ? "내 오퍼" : mode === "done" ? "완료" : "교환"}
+          {offer.isMine ? "내 오퍼" : mode === "done" ? "완료" : "조건 확인"}
         </Link>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-1.5">
@@ -543,17 +576,17 @@ function EmptySwap({
   return (
     <div className="rounded-2xl border border-dashed border-border bg-card p-4 text-center">
       <div className="text-[13px] font-extrabold text-foreground">
-        조건에 맞는 교환 오퍼가 없습니다
+        조건에 맞는 P2P교환 오퍼가 없습니다
       </div>
       <p className="mt-1 text-[11px] text-muted-foreground">
-        원하는 비율로 오퍼를 등록하면 상대방이 직접 참여할 수 있습니다.
+        상단에서 줄 코인·받을 코인·수량을 바꾸면 이 화면에서 바로 다시 찾습니다.
       </p>
       <Link
         to="/app/swap/new"
         search={{ give, receive, amount }}
         className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-foreground px-4 py-2.5 text-[12px] font-extrabold text-background"
       >
-        <Plus className="h-3.5 w-3.5" /> 교환 오퍼 등록
+        <Plus className="h-3.5 w-3.5" /> 현재 조건으로 등록
       </Link>
     </div>
   );

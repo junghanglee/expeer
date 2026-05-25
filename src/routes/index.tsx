@@ -29,7 +29,7 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "EXPEER — 100% 비수탁 P2P 스테이블코인 · 법정화폐 환전소" },
+      { title: "EXPEER — 100% 비수탁 P2P 스테이블코인 · 법정화폐 P2P환전" },
       {
         name: "description",
         content:
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "스마트 컨트랙트가 송금을 보장하는 글로벌 P2P 환전·스왑 플랫폼. USDT·USDC·KRW·ETH 등 자유로운 페어, 다층 안전장치, 평균 62초 정산.",
+          "스마트 컨트랙트가 송금을 보장하는 글로벌 P2P환전·P2P교환 플랫폼. USDT·USDC·KRW·ETH 등 자유로운 페어, 다층 안전장치, 평균 62초 정산.",
       },
     ],
   }),
@@ -63,10 +63,10 @@ function Landing() {
           </Link>
           <nav className="flex items-center gap-1 text-[13px] font-semibold text-foreground/70">
             <Link to="/app/market" className="rounded-lg px-3 py-2 hover:bg-surface">
-              P2P 환전
+              P2P환전
             </Link>
             <Link to="/app/swap" className="rounded-lg px-3 py-2 hover:bg-surface">
-              코인 교환
+              P2P교환
             </Link>
             <Link
               to="/app/market"
@@ -102,7 +102,7 @@ function Landing() {
                 EXPEER는 USDT·USDC 같은{" "}
                 <b className="text-foreground">스테이블코인 ↔ 법정화폐(KRW 외)</b>, 그리고{" "}
                 <b className="text-foreground">코인 ↔ 코인</b>을 사람과 사람이 직접 교환하는 글로벌
-                P2P 환전소입니다.
+                P2P환전입니다.
                 <br className="hidden lg:block" />
                 자산은 절대 플랫폼에 보관되지 않으며, 모든 거래는{" "}
                 <b className="text-foreground">온체인 스마트 컨트랙트</b>가 보증합니다.
@@ -119,7 +119,7 @@ function Landing() {
                   to="/app/swap"
                   className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-6 py-3.5 text-[15px] font-bold text-foreground hover:bg-surface"
                 >
-                  코인↔코인 교환 <Repeat2 className="h-4 w-4" />
+                  P2P교환 <Repeat2 className="h-4 w-4" />
                 </Link>
               </div>
 
@@ -195,7 +195,7 @@ function Landing() {
           <div className="mt-8 grid gap-3 lg:mt-12 lg:grid-cols-3 lg:gap-5">
             <ServiceCard
               icon={Banknote}
-              tag="P2P 환전"
+              tag="P2P환전"
               title="스테이블코인 ↔ 법정화폐"
               desc="USDT·USDC를 KRW·USD·VND·THB·IDR 등 현지 통화로 즉시 교환. 은행 송금 + 온체인 락업으로 양방향이 모두 안전합니다."
               examples={["USDT / KRW", "USDC / KRW", "USDT / USD"]}
@@ -204,7 +204,7 @@ function Landing() {
             />
             <ServiceCard
               icon={Repeat2}
-              tag="코인 스왑"
+              tag="P2P교환"
               title="코인 ↔ 코인"
               desc="BTC·ETH·SOL 등 메이저 자산을 USDT·USDC와 직접 P2P로 교환. 중앙 거래소 상장·출금 한도와 무관하게 자유롭게 거래합니다."
               examples={["ETH / USDT", "BTC / USDT", "SOL / USDC"]}
@@ -320,7 +320,7 @@ function Landing() {
             HOW IT WORKS
           </div>
           <h2 className="mt-3 text-[26px] font-extrabold leading-tight tracking-tight lg:text-[40px]">
-            5단계로 끝나는 안전한 P2P 환전.
+            5단계로 끝나는 안전한 P2P환전.
           </h2>
 
           <ol className="mt-8 grid gap-3 lg:mt-12 lg:grid-cols-5">
@@ -350,17 +350,17 @@ function Landing() {
           <SectionHead
             tag="GET STARTED"
             title={<>두 가지 목적, 한 번의 안전한 거래.</>}
-            desc="EXPEER는 오직 두 가지에 집중합니다 — P2P 환전과 코인 교환."
+            desc="EXPEER는 오직 두 가지에 집중합니다 — P2P환전과 P2P교환."
           />
           <div className="mt-8 grid gap-3 lg:grid-cols-2">
             <RoleCard
               to="/app/market"
               icon={Banknote}
-              title="P2P 환전"
+              title="P2P환전"
               desc="스테이블코인 ↔ 법정화폐 즉시 교환"
               accent
             />
-            <RoleCard to="/app/swap" icon={Repeat2} title="코인 교환" desc="코인 ↔ 코인 P2P 스왑" />
+            <RoleCard to="/app/swap" icon={Repeat2} title="P2P교환" desc="코인 ↔ 코인 P2P교환" />
           </div>
 
           <p className="mt-10 text-center text-[11px] leading-relaxed text-muted-foreground">
@@ -563,7 +563,7 @@ type PairShow = {
   base: string;
   quote: string;
   network: string;
-  kind: "환전" | "스왑" | "스테이블";
+  kind: "환전" | "교환" | "스테이블";
   price: number;
   changePct: number;
   fmt: (n: number) => string;
@@ -598,7 +598,7 @@ const SHOWCASE: PairShow[] = [
     base: "ETH",
     quote: "USDT",
     network: "Arbitrum",
-    kind: "스왑",
+    kind: "교환",
     price: 3240.45,
     changePct: 0.94,
     fmt: (n) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -631,7 +631,7 @@ function PairShowcase() {
 
   const kindTone: Record<PairShow["kind"], string> = {
     환전: "bg-primary-soft text-primary",
-    스왑: "bg-success-soft text-success",
+    교환: "bg-success-soft text-success",
     스테이블: "bg-warning-soft text-warning-foreground",
   };
 

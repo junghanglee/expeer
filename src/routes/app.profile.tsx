@@ -380,7 +380,7 @@ function Profile() {
           <div className="flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4 text-primary" />
             <span className="text-[12px] font-semibold text-foreground">
-              P2P 환전소 진입 시 기본 페어
+              P2P환전 진입 시 기본 페어
             </span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-1.5">

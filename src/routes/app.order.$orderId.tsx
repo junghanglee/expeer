@@ -103,12 +103,22 @@ function OrderDetail() {
       <AppHeader
         title={`주문 #${order.id.slice(-4)}`}
         subtitle={`${isCryptoSwap ? "P2P교환" : "P2P환전"} · ${STATUS_LABEL[status] ?? status}`}
+        right={
+          <Link
+            to="/app/order/$orderId/chat"
+            params={{ orderId }}
+            search={{ role: isBuyer ? "buyer" : "seller" }}
+            className="shrink-0 rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-extrabold text-primary"
+          >
+            채팅
+          </Link>
+        }
       />
       <OrderStatusStepper status={status} />
 
       {isDemo && (
-        <div className="px-5 pt-3">
-          <div className="rounded-2xl border border-success bg-success-soft p-3 text-[12px] font-semibold leading-relaxed text-success">
+        <div className="min-w-0 px-5 pt-3">
+          <div className="overflow-hidden break-words rounded-2xl border border-success bg-success-soft p-3 text-[12px] font-semibold leading-relaxed text-success">
             테스트 주문입니다. 실제 DB 저장 없이 상세·채팅·증빙·분쟁 흐름을 확인할 수 있습니다.
           </div>
         </div>
@@ -163,9 +173,9 @@ function OrderDetail() {
 
       {status === "disputed" && (
         <Section>
-          <div className="rounded-2xl border border-destructive bg-destructive-soft p-4">
-            <div className="flex items-center gap-2 text-[14px] font-extrabold text-destructive">
-              <ShieldAlert className="h-5 w-5" /> 분쟁/자료 보존 진행 중
+          <div className="overflow-hidden rounded-2xl border border-destructive bg-destructive-soft p-4">
+            <div className="flex min-w-0 items-center gap-2 break-words text-[14px] font-extrabold text-destructive">
+              <ShieldAlert className="h-5 w-5 shrink-0" /> 분쟁/자료 보존 진행 중
             </div>
             <p className="mt-2 text-[12px] leading-relaxed text-foreground">
               채팅, 증빙, 주문 기록을 보존하고 제출용 자료를 준비합니다.
@@ -183,9 +193,9 @@ function OrderDetail() {
             <Link
               to="/app/order/$orderId/review"
               params={{ orderId }}
-              className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-warning bg-warning-soft py-3 text-[13px] font-bold text-warning-foreground"
+              className="mt-3 flex min-w-0 items-center justify-center gap-2 overflow-hidden break-words rounded-xl border border-warning bg-warning-soft px-3 py-3 text-center text-[13px] font-bold text-warning-foreground"
             >
-              <Star className={`h-4 w-4 ${myReview ? "fill-warning text-warning" : ""}`} />
+              <Star className={`h-4 w-4 shrink-0 ${myReview ? "fill-warning text-warning" : ""}`} />
               {myReview ? "내가 남긴 평가 보기" : "상대방 평가 남기기"}
             </Link>
           )}
@@ -195,7 +205,7 @@ function OrderDetail() {
       {(order.buyer_cancel_requested_at || order.seller_cancel_requested_at) &&
         status !== "cancelled" && (
           <Section>
-            <div className="rounded-2xl border border-warning bg-warning-soft p-4 text-[13px] text-foreground">
+            <div className="overflow-hidden break-words rounded-2xl border border-warning bg-warning-soft p-4 text-[13px] text-foreground">
               <div className="font-bold">취소 합의 진행 중</div>
               <div className="mt-2 text-[12px]">
                 구매자 동의: {order.buyer_cancel_requested_at ? "완료" : "대기"} · 판매자 동의:{" "}
@@ -210,23 +220,23 @@ function OrderDetail() {
           <Link
             to="/app/order/$orderId/proof"
             params={{ orderId }}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-3 text-[13px] font-bold text-foreground"
+            className="flex min-w-0 items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-border bg-card px-2 py-3 text-center text-[13px] font-bold text-foreground"
           >
-            <FileText className="h-4 w-4" /> 증빙
+            <FileText className="h-4 w-4 shrink-0" /> <span className="min-w-0 truncate">증빙</span>
           </Link>
           <Link
             to="/app/order/$orderId/chat"
             params={{ orderId }}
             search={{ role: isBuyer ? "buyer" : "seller" }}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-3 text-[13px] font-bold text-foreground"
+            className="flex min-w-0 items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-border bg-card px-2 py-3 text-center text-[13px] font-bold text-foreground"
           >
-            <MessageCircle className="h-4 w-4" /> 채팅
+            <MessageCircle className="h-4 w-4 shrink-0" /> <span className="min-w-0 truncate">채팅</span>
           </Link>
         </div>
       </Section>
 
       <div className="h-24" />
-      <div className="sticky bottom-0 z-10 space-y-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
+      <div className="sticky bottom-0 z-10 min-w-0 space-y-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
         {isBuyer && (status === "created" || status === "info_shared") && (
           <button
             disabled={busy}
@@ -236,7 +246,7 @@ function OrderDetail() {
                 isCryptoSwap ? "전송 준비 완료 처리" : "입금 완료 처리",
               )
             }
-            className="block w-full rounded-xl bg-primary py-3.5 text-center text-[15px] font-bold text-primary-foreground disabled:opacity-50"
+            className="block w-full min-w-0 whitespace-normal break-words rounded-xl bg-primary px-3 py-3.5 text-center text-[15px] font-bold text-primary-foreground disabled:opacity-50"
           >
             {isCryptoSwap ? "전송 준비 완료 표시" : "입금 완료 표시"}
           </button>
@@ -245,7 +255,7 @@ function OrderDetail() {
           <button
             disabled={busy}
             onClick={() => navigate({ to: "/app/order/$orderId/proof", params: { orderId } })}
-            className="block w-full rounded-xl border border-primary bg-primary-soft py-3 text-center text-[13px] font-bold text-primary"
+            className="block w-full min-w-0 whitespace-normal break-words rounded-xl border border-primary bg-primary-soft px-3 py-3 text-center text-[13px] font-bold text-primary"
           >
             {status === "proof_uploaded"
               ? isCryptoSwap
@@ -260,7 +270,7 @@ function OrderDetail() {
           <button
             disabled={busy}
             onClick={() => run(() => cancelOrder(order.id), "주문 취소됨")}
-            className="block w-full rounded-xl border border-border bg-card py-2.5 text-center text-[13px] font-semibold text-muted-foreground"
+            className="block w-full min-w-0 whitespace-normal break-words rounded-xl border border-border bg-card px-3 py-2.5 text-center text-[13px] font-semibold text-muted-foreground"
           >
             주문 취소
           </button>
@@ -276,7 +286,7 @@ function OrderDetail() {
                   "취소 요청을 철회했습니다",
                 )
               }
-              className="block w-full rounded-xl border border-border bg-card py-2.5 text-center text-[13px] font-semibold text-muted-foreground"
+              className="block w-full min-w-0 whitespace-normal break-words rounded-xl border border-border bg-card px-3 py-2.5 text-center text-[13px] font-semibold text-muted-foreground"
             >
               취소 요청 철회
             </button>
@@ -289,7 +299,7 @@ function OrderDetail() {
                   "취소 요청을 보냈습니다",
                 )
               }
-              className="block w-full rounded-xl border border-warning bg-warning-soft py-2.5 text-center text-[13px] font-semibold text-warning-foreground"
+              className="block w-full min-w-0 whitespace-normal break-words rounded-xl border border-warning bg-warning-soft px-3 py-2.5 text-center text-[13px] font-semibold text-warning-foreground"
             >
               상대방에게 취소 합의 요청
             </button>
@@ -298,7 +308,7 @@ function OrderDetail() {
           <Link
             to="/app/order/$orderId/dispute"
             params={{ orderId }}
-            className="block text-center text-[12px] font-semibold text-destructive"
+            className="block min-w-0 break-words px-2 text-center text-[12px] font-semibold text-destructive"
           >
             문제가 있나요? 자료 보존 신청
           </Link>
@@ -306,7 +316,7 @@ function OrderDetail() {
         {["completed", "released", "cancelled", "expired"].includes(status) && (
           <button
             onClick={() => navigate({ to: "/app/orders" })}
-            className="block w-full rounded-xl bg-surface py-3 text-center text-[13px] font-bold text-foreground"
+            className="block w-full min-w-0 whitespace-normal break-words rounded-xl bg-surface px-3 py-3 text-center text-[13px] font-bold text-foreground"
           >
             주문 내역으로
           </button>
@@ -381,23 +391,23 @@ function NextActionCard({
       title="지금 해야 할 일"
       action={remainSec > 0 && !isCryptoSwap ? <CountdownTimer totalSec={remainSec} /> : undefined}
     >
-      <div className="rounded-2xl border border-primary bg-primary-soft p-4">
+      <div className="overflow-hidden rounded-2xl border border-primary bg-primary-soft p-4">
         <div className="flex items-start gap-2">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <CheckCircle2 className="h-4 w-4" />
           </div>
-          <div>
-            <div className="text-[14px] font-extrabold text-foreground">{title}</div>
-            <p className="mt-1 text-[12px] leading-relaxed text-foreground/75">{desc}</p>
+          <div className="min-w-0">
+            <div className="break-words text-[14px] font-extrabold text-foreground">{title}</div>
+            <p className="mt-1 break-words text-[12px] leading-relaxed text-foreground/75">{desc}</p>
           </div>
         </div>
         <div className="mt-3 grid gap-1.5">
           {items.map((item) => (
             <div
               key={item}
-              className="flex items-center gap-2 rounded-lg bg-background/70 px-2 py-1.5 text-[11px] font-semibold text-foreground/80"
+              className="flex min-w-0 items-start gap-2 rounded-lg bg-background/70 px-2 py-1.5 text-[11px] font-semibold text-foreground/80"
             >
-              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
               {item}
             </div>
           ))}
@@ -418,9 +428,9 @@ function FeeRow({
 }) {
   return (
     <div
-      className={`flex items-center justify-between py-1 ${highlight ? "font-bold text-foreground" : "text-muted-foreground"}`}
+      className={`flex min-w-0 items-start justify-between gap-2 py-1 ${highlight ? "font-bold text-foreground" : "text-muted-foreground"}`}
     >
-      <span>
+      <span className="min-w-0 break-words">
         {label}
         {highlight && (
           <span className="ml-1 rounded bg-primary-soft px-1 text-[10px] text-primary">
@@ -428,7 +438,7 @@ function FeeRow({
           </span>
         )}
       </span>
-      <span className="num-display">{value}</span>
+      <span className="num-display max-w-[45%] shrink-0 truncate text-right">{value}</span>
     </div>
   );
 }

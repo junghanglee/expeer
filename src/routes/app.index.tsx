@@ -174,7 +174,7 @@ function AppHome() {
             to="/app/swap"
             className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-primary"
           >
-            다른 코인 교환 <ChevronRight className="h-3 w-3" />
+            P2P교환 <ChevronRight className="h-3 w-3" />
           </Link>
         </div>
         <div className="grid grid-cols-3 gap-1.5">
@@ -203,7 +203,7 @@ function AppHome() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-[12px] font-bold opacity-90">
-                <ArrowLeftRight className="h-4 w-4" /> P2P 환전 · {pair}
+                <ArrowLeftRight className="h-4 w-4" /> P2P환전 · {pair}
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-bold text-success">
                 <span className="h-1.5 w-1.5 rounded-full bg-success pulse-dot" /> LIVE
@@ -234,7 +234,7 @@ function AppHome() {
               to="/app/swap"
               className="mt-3 inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-2 text-[12px] font-bold text-primary-foreground"
             >
-              P2P 교환 열기 <ChevronRight className="h-3.5 w-3.5" />
+              P2P교환 열기 <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         )}
@@ -277,15 +277,15 @@ function AppHome() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-success-soft text-success">
               <ArrowLeftRight className="h-4 w-4" />
             </div>
-            <div className="mt-2 text-[13px] font-extrabold text-foreground">P2P 환전</div>
-            <div className="text-[11px] text-muted-foreground">스테이블코인 ↔ 법정화폐</div>
+            <div className="mt-2 text-[13px] font-extrabold text-foreground">P2P환전</div>
+            <div className="text-[11px] text-muted-foreground">메인에서 오퍼·필터·주문 시작</div>
           </Link>
           <Link to="/app/swap" className="card-lift rounded-2xl border border-border bg-card p-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
               <ArrowRightLeft className="h-4 w-4" />
             </div>
-            <div className="mt-2 text-[13px] font-extrabold text-foreground">P2P 교환</div>
-            <div className="text-[11px] text-muted-foreground">스테이블코인 ↔ 일반 코인</div>
+            <div className="mt-2 text-[13px] font-extrabold text-foreground">P2P교환</div>
+            <div className="text-[11px] text-muted-foreground">메인에서 조건 선택·내 오퍼 확인</div>
           </Link>
         </div>
       </Section>

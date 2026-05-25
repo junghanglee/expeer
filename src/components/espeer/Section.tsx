@@ -12,11 +12,11 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section className={`px-4 py-3 ${className ?? ""}`}>
+    <section className={`min-w-0 px-4 py-3 ${className ?? ""}`}>
       {(title || action) && (
-        <div className="mb-2.5 flex items-center justify-between">
-          {title && <h2 className="text-[15px] font-bold text-foreground">{title}</h2>}
-          {action}
+        <div className="mb-2.5 flex min-w-0 items-start justify-between gap-2">
+          {title && <h2 className="min-w-0 break-words text-[15px] font-bold text-foreground">{title}</h2>}
+          {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
       {children}
@@ -40,9 +40,9 @@ export function InfoRow({
         ? "text-success"
         : "text-foreground";
   return (
-    <div className="flex items-center justify-between py-2">
-      <span className="text-[13px] text-muted-foreground">{label}</span>
-      <span className={`text-[13px] font-semibold ${t}`}>{value}</span>
+    <div className="flex min-w-0 items-start justify-between gap-2 py-2">
+      <span className="min-w-0 break-words text-[13px] text-muted-foreground">{label}</span>
+      <span className={`min-w-0 break-words text-right text-[13px] font-semibold ${t}`}>{value}</span>
     </div>
   );
 }

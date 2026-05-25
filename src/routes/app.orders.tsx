@@ -116,7 +116,7 @@ function orderSummary(order: OrderWithAd) {
       } → ${Number(order.ads?.to_amount ?? order.fiat_amount).toLocaleString("ko-KR", {
         maximumFractionDigits: 6,
       })} ${order.ads?.to_asset ?? order.fiat}`,
-      sub: "코인 ↔ 코인 교환",
+      sub: "코인 ↔ 코인 P2P교환",
       badge: "P2P교환",
       tone: "bg-primary-soft text-primary",
     };

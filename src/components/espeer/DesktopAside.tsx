@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, ListOrdered, Megaphone, Wallet, ArrowRight, Inbox } from "lucide-react";
+import { Bell, ListOrdered, Megaphone, Wallet, ArrowRight, Inbox, Repeat2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useOrders } from "@/hooks/useOrders";
@@ -76,10 +76,11 @@ export function DesktopAside() {
         <div className="rounded-2xl border border-border bg-card p-4">
           <div className="text-[12px] font-bold text-foreground mb-2.5">바로가기</div>
           <div className="grid grid-cols-2 gap-2">
-            <QuickAction to="/app/market" icon={ArrowRight} label="P2P" />
-            <QuickAction to="/app/selling" icon={Megaphone} label="내 오퍼" />
+            <QuickAction to="/app/market" icon={ArrowRight} label="P2P환전" />
+            <QuickAction to="/app/swap" icon={Repeat2} label="P2P교환" />
             <QuickAction to="/app/orders" icon={ListOrdered} label="주문" />
             <QuickAction to="/app/profile" icon={Wallet} label="지갑·계좌" />
+            <QuickAction to="/app/selling" icon={Megaphone} label="내 오퍼" />
           </div>
         </div>
 

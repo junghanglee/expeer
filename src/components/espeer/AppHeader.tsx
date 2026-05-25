@@ -35,11 +35,11 @@ export function AppHeader({
       ) : (
         <div className="w-2" />
       )}
-      <div className="flex-1 leading-tight">
-        {title && <h1 className="text-[15px] font-bold text-foreground">{title}</h1>}
-        {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
+      <div className="min-w-0 flex-1 leading-tight">
+        {title && <h1 className="min-w-0 truncate text-[15px] font-bold text-foreground">{title}</h1>}
+        {subtitle && <p className="min-w-0 truncate text-[11px] text-muted-foreground">{subtitle}</p>}
       </div>
-      <div className="flex items-center gap-1">{right}</div>
+      <div className="flex shrink-0 items-center gap-1">{right}</div>
     </header>
   );
 }

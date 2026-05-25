@@ -33,11 +33,11 @@ import { useSwapRequests } from "@/data/offerStore";
 export const Route = createFileRoute("/app/market")({
   head: () => ({
     meta: [
-      { title: "P2P 환전소 — EXPEER" },
+      { title: "P2P환전 — EXPEER" },
       {
         name: "description",
         content:
-          "선택한 페어에서 즉시 살 수 있는 오퍼를 한눈에. 전체구매 또는 부분구매가 가능한 P2P 환전소.",
+          "선택한 페어에서 즉시 살 수 있는 오퍼를 한눈에. 전체구매 또는 부분구매가 가능한 P2P환전.",
       },
     ],
   }),
@@ -84,6 +84,7 @@ function MarketPage() {
   const [sort, setSort] = useState<SortKey>("best");
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
   const [amountFilter, setAmountFilter] = useState("");
+  const [createGuideOpen, setCreateGuideOpen] = useState(false);
 
   const allOffers = useSwapRequests();
 
@@ -163,7 +164,7 @@ function MarketPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div className="leading-tight">
-            <div className="text-[15px] font-extrabold text-foreground">P2P 마켓</div>
+            <div className="text-[15px] font-extrabold text-foreground">P2P환전</div>
             <div className="truncate text-[10px] font-semibold text-muted-foreground">
               원하는 오퍼를 골라 안전하게 거래
             </div>
@@ -184,8 +185,8 @@ function MarketPage() {
           {fiat}로 {base}를 사고팔 오퍼를 바로 찾으세요
         </h1>
         <p className="mt-2 text-[11px] font-semibold leading-relaxed text-background/70">
-          구매/판매 방향을 고르고, 코인·금액·결제수단 필터로 맞는 광고만 확인합니다. 코인 교환은
-          별도 메뉴에서 진행하고, 이 화면은 법정화폐 P2P 거래에 집중합니다.
+          구매/판매 방향을 고르고, 코인·금액·결제수단 필터로 맞는 광고만 확인합니다. P2P교환은 별도
+          메뉴에서 진행하고, 이 화면은 법정화폐 P2P환전에 집중합니다.
         </p>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
           <HeroStat label="판매 오퍼" value={`${sellOffers.length}건`} />
@@ -201,17 +202,16 @@ function MarketPage() {
             <div className="flex items-center gap-1.5 text-[14px] font-extrabold text-foreground">
               <HandCoins className="h-4 w-4 text-primary" /> 거래 코인·통화 선택
             </div>
-            <div className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
-              먼저 무엇을 사고팔지 정하면 아래 오퍼 목록이 바뀝니다
+            <div className="mt-1 text-[10px] font-semibold text-muted-foreground">
+              P2P환전 조건 등록은 여기서 시작하고, 등록 후 관리는 주문·내 오퍼에서 이어집니다
             </div>
           </div>
-          <Link
-            to="/app/selling/new"
-            search={{ side: tab === "sell" ? "sell" : "buy", asset: base, price: Math.round(mid) }}
+          <button
+            onClick={() => setCreateGuideOpen((prev) => !prev)}
             className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-foreground px-3 text-[12px] font-extrabold text-background"
           >
-            <Plus className="h-3.5 w-3.5" /> 오퍼 등록
-          </Link>
+            <Plus className="h-3.5 w-3.5" /> 간편 등록
+          </button>
         </div>
         <MarketPairPicker pair={pair} onChange={setPair} />
       </div>
@@ -224,14 +224,13 @@ function MarketPage() {
 
       {/* Process shortcuts */}
       <div className="mx-4 mt-3 grid grid-cols-2 gap-2">
-        <Link
-          to="/app/selling/new"
-          search={{ side: tab === "sell" ? "sell" : "buy", asset: base, price: Math.round(mid) }}
+        <button
+          onClick={() => setCreateGuideOpen((prev) => !prev)}
           className="card-lift flex items-center justify-center gap-2 rounded-2xl bg-primary px-3 py-3 text-primary-foreground"
         >
           <Plus className="h-4 w-4 shrink-0" />
-          <span className="truncate text-[13px] font-extrabold">오퍼 등록</span>
-        </Link>
+          <span className="truncate text-[13px] font-extrabold">현재 조건으로 등록</span>
+        </button>
         <Link
           to="/app/orders"
           className="card-lift flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-3 py-3 text-foreground"
@@ -240,12 +239,55 @@ function MarketPage() {
           <span className="truncate text-[13px] font-extrabold">진행 주문</span>
         </Link>
       </div>
+      {createGuideOpen && (
+        <div className="mx-4 mt-2 rounded-2xl border border-primary-soft bg-primary-soft/40 p-3">
+          <div className="text-[12px] font-extrabold text-foreground">P2P환전 오퍼 간편 등록</div>
+          <div className="mt-1 text-[10px] font-semibold leading-relaxed text-muted-foreground">
+            {pair} · {tab === "sell" ? "판매 오퍼" : "구매 오퍼"} · 기준가 {fmtNum(mid)} {fiat}{" "}
+            조건으로 아래 목록과 필터를 확인한 뒤 등록하세요. 등록한 오퍼와 생성된 주문은 주문 메뉴
+            또는 내 오퍼 관리에서 계속 확인할 수 있습니다.
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setAmountFilter(amountFilter || String(Math.round(mid * 100)))}
+              className="rounded-xl bg-card py-2 text-[11px] font-extrabold text-foreground"
+            >
+              금액 예시 채우기
+            </button>
+            <Link
+              to="/app/selling/new"
+              search={{
+                side: tab === "sell" ? "sell" : "buy",
+                asset: base,
+                price: Math.round(mid),
+              }}
+              className="rounded-xl bg-foreground py-2 text-center text-[11px] font-extrabold text-background"
+            >
+              상세 조건 입력
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="mx-4 mt-2">
         <Link
           to="/app/selling"
           className="flex h-10 items-center justify-center rounded-2xl border border-border bg-card text-[12px] font-extrabold text-foreground"
         >
-          내 오퍼 관리하기
+          내 오퍼·주문 관리
+        </Link>
+      </div>
+      <div className="mx-4 mt-2 grid grid-cols-2 gap-2">
+        <Link
+          to="/app/orders"
+          className="flex h-10 items-center justify-center rounded-2xl bg-surface text-[12px] font-extrabold text-foreground"
+        >
+          주문 전체보기
+        </Link>
+        <Link
+          to="/app/swap"
+          className="flex h-10 items-center justify-center rounded-2xl bg-primary-soft text-[12px] font-extrabold text-primary"
+        >
+          P2P교환으로 이동
         </Link>
       </div>
 
@@ -282,31 +324,31 @@ function MarketPage() {
               className="num-display min-w-0 flex-1 bg-transparent text-[13px] font-extrabold text-foreground outline-none"
             />
           </label>
-          <div className="mt-2 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="mt-2 flex min-w-0 items-center gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {PAYMENT_FILTERS.map((p) => (
               <button
                 key={p.key}
                 onClick={() => setPaymentFilter(p.key)}
-                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[10.5px] font-bold transition-colors min-[360px]:px-3 min-[360px]:text-[11px] ${
                   paymentFilter === p.key
                     ? "bg-primary text-primary-foreground"
                     : "border border-border bg-background text-muted-foreground"
                 }`}
               >
-                {p.label}
+                <span className="block truncate">{p.label}</span>
               </button>
             ))}
             {SORT_OPTIONS.map((s) => (
               <button
                 key={s.key}
                 onClick={() => setSort(s.key)}
-                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[10.5px] font-bold transition-colors min-[360px]:px-3 min-[360px]:text-[11px] ${
                   sort === s.key
                     ? "bg-foreground text-background"
                     : "border border-border bg-background text-muted-foreground"
                 }`}
               >
-                {s.label}
+                <span className="block truncate">{s.label}</span>
               </button>
             ))}
           </div>
@@ -716,7 +758,7 @@ function EmptyOffer({ side }: { side: SwapSide }) {
         지금 {side === "sell" ? "살 수" : "팔 수"} 있는 오퍼가 없어요
       </div>
       <div className="mt-1 text-[10px] text-muted-foreground">
-        오퍼 등록 화면에서 조건을 정해 새 오퍼를 만들 수 있어요.
+        현재 화면에서 조건을 먼저 고른 뒤 간편 등록을 열어 새 오퍼를 만들 수 있어요.
       </div>
     </div>
   );
@@ -730,7 +772,7 @@ function EmptyMine() {
       </div>
       <div className="mt-3 text-[13px] font-bold text-foreground">아직 등록한 주문이 없어요</div>
       <div className="mt-1 text-[11px] text-muted-foreground">
-        오퍼 등록 화면에서 새 오퍼를 만들고, 진행 주문은 주문 메뉴에서 확인하세요.
+        P2P환전 메인에서 조건을 먼저 고르고 간편 등록으로 새 오퍼를 만들 수 있어요.
       </div>
     </div>
   );

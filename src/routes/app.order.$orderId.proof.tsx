@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FileImage, Loader2, ShieldCheck, Upload } from "lucide-react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
@@ -149,17 +149,29 @@ function Proof() {
 
   return (
     <PhoneShell hideTab>
-      <AppHeader title={title} subtitle={`주문 #${orderId.slice(-4)}`} />
+      <AppHeader
+        title={title}
+        subtitle={`주문 #${orderId.slice(-4)}`}
+        right={
+          <Link
+            to="/app/order/$orderId"
+            params={{ orderId }}
+            className="shrink-0 rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-extrabold text-primary"
+          >
+            상세
+          </Link>
+        }
+      />
 
       <Section>
-        <div className="mb-3 rounded-2xl border border-primary bg-primary-soft p-3 text-[12px] leading-relaxed text-foreground">
+        <div className="mb-3 overflow-hidden break-words rounded-2xl border border-primary bg-primary-soft p-3 text-[12px] leading-relaxed text-foreground">
           <ShieldCheck className="mr-1 inline h-4 w-4 text-primary" />
           {isCryptoSwap
             ? "지갑 주소, 전송 수량, tx hash가 보이는 화면을 첨부하면 분쟁 자료로 보존됩니다."
             : "입금자명, 입금 금액, 입금 시간이 보이는 화면을 첨부하면 분쟁 자료로 보존됩니다."}
         </div>
         {isDemo && (
-          <div className="mb-3 rounded-2xl border border-success bg-success-soft p-3 text-[12px] font-semibold text-success">
+          <div className="mb-3 overflow-hidden break-words rounded-2xl border border-success bg-success-soft p-3 text-[12px] font-semibold text-success">
             테스트 주문입니다. 실제 파일 저장 없이 증빙 흐름만 확인합니다.
           </div>
         )}
@@ -173,17 +185,17 @@ function Proof() {
         <button
           disabled={uploading}
           onClick={() => (isDemo ? handleUpload() : fileRef.current?.click())}
-          className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-surface py-12 text-muted-foreground disabled:opacity-50"
+          className="flex w-full min-w-0 flex-col items-center justify-center gap-2 overflow-hidden break-words rounded-2xl border-2 border-dashed border-border bg-surface px-3 py-12 text-center text-muted-foreground disabled:opacity-50"
         >
           {uploading ? (
             <Loader2 className="h-7 w-7 animate-spin" />
           ) : (
             <Upload className="h-7 w-7" />
           )}
-          <div className="text-[13px] font-semibold text-foreground">
+          <div className="min-w-0 text-[13px] font-semibold text-foreground">
             {uploading ? "업로드 중..." : emptyCta}
           </div>
-          <div className="text-[11px]">스크린샷 / 사진 / PDF</div>
+          <div className="min-w-0 text-[11px]">스크린샷 / 사진 / PDF</div>
         </button>
         <textarea
           placeholder={
@@ -192,7 +204,7 @@ function Proof() {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={2}
-          className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-[12px] focus:outline-none"
+          className="mt-2 w-full min-w-0 rounded-xl border border-border bg-background px-3 py-2 text-[12px] focus:outline-none"
         />
       </Section>
 
@@ -202,9 +214,9 @@ function Proof() {
             {proofs.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
+                className="flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-soft text-primary">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
                   <FileImage className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -220,7 +232,7 @@ function Proof() {
                     </div>
                   )}
                 </div>
-                <span className="rounded-full bg-success-soft px-2 py-0.5 text-[11px] font-bold text-success">
+                <span className="shrink-0 rounded-full bg-success-soft px-2 py-0.5 text-[11px] font-bold text-success">
                   완료
                 </span>
               </div>
@@ -232,7 +244,7 @@ function Proof() {
       <Section>
         <button
           onClick={() => navigate({ to: "/app/order/$orderId", params: { orderId } })}
-          className="block w-full rounded-xl bg-primary py-3.5 text-center text-[15px] font-bold text-primary-foreground"
+          className="block w-full min-w-0 whitespace-normal break-words rounded-xl bg-primary px-3 py-3.5 text-center text-[15px] font-bold text-primary-foreground"
         >
           주문 화면으로
         </button>

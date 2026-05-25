@@ -39,7 +39,7 @@ function NewSwapOrder() {
   if (!offer) {
     return (
       <PhoneShell hideTab>
-        <AppHeader title="교환 오퍼 없음" />
+        <AppHeader title="P2P교환 오퍼 없음" />
         <div className="px-5 py-8 text-center text-muted-foreground">
           존재하지 않거나 종료된 오퍼입니다.
         </div>

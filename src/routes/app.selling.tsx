@@ -246,7 +246,7 @@ function ActivityPage() {
           <h2 className="shrink-0 whitespace-nowrap text-[14px] font-bold text-foreground">
             거래 내역
           </h2>
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto px-px pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <CompactFilter active={kindTab === "all"} onClick={() => setKindTab("all")}>
               전체
             </CompactFilter>
@@ -341,10 +341,10 @@ function KPI({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl py-1.5 text-center transition-colors ${active ? "bg-foreground text-background" : "bg-surface text-foreground"}`}
+      className={`min-w-0 rounded-xl px-1 py-1.5 text-center transition-colors ${active ? "bg-foreground text-background" : "bg-surface text-foreground"}`}
     >
-      <div className="num-display text-[16px] leading-none">{value}</div>
-      <div className="mt-0.5 text-[10px] font-bold">{label}</div>
+      <div className="num-display min-w-0 truncate text-[16px] leading-none">{value}</div>
+      <div className="mt-0.5 min-w-0 truncate text-[10px] font-bold">{label}</div>
     </button>
   );
 }
