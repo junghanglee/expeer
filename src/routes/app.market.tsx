@@ -1,13 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PhoneShell } from "@/components/espeer/PhoneShell";
-import { DepthMiniChart } from "@/components/espeer/DepthMiniChart";
-import { LivePriceBar } from "@/components/espeer/LivePriceBar";
 import { useLivePrices } from "@/hooks/useLivePrices";
-import { MarketPairPicker } from "@/components/espeer/PairPicker";
 import {
   ArrowLeft,
-  ChevronDown,
+  ArrowLeftRight,
   ShieldCheck,
   Info,
   BadgeCheck,
@@ -84,7 +81,6 @@ function MarketPage() {
   const [sort, setSort] = useState<SortKey>("best");
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
   const [amountFilter, setAmountFilter] = useState("");
-  const [createGuideOpen, setCreateGuideOpen] = useState(false);
 
   const allOffers = useSwapRequests();
 
@@ -101,6 +97,18 @@ function MarketPage() {
   const liveQuote = live.quotes[base];
   const livePrice = liveQuote ? (fiat === "KRW" ? liveQuote.priceKrw : liveQuote.priceUsd) : null;
   const mid = livePrice ?? makePairStats(pair, allOffers, fallbackMidPrice(pair)).midPrice;
+  const giveAsset = tab === "buy" ? fiat : base;
+  const receiveAsset = tab === "buy" ? base : fiat;
+  const estimatedReceive = numericAmountFilter
+    ? tab === "buy"
+      ? numericAmountFilter / Math.max(mid, 1)
+      : numericAmountFilter * mid
+    : 0;
+
+  const switchDirection = () => {
+    setTab((prev) => (prev === "buy" ? "sell" : "buy"));
+    setAmountFilter("");
+  };
 
   // 정렬 적용 함수: best는 side에 따라 다름
   const applySort = useCallback(
@@ -151,12 +159,13 @@ function MarketPage() {
       ),
     [pair, allOffers, applySort, isVisibleByFilters],
   );
+  const primaryOfferCount = tab === "buy" ? sellOffers.length : buyOffers.length;
 
   return (
     <PhoneShell>
       {/* Header */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-20 flex min-w-0 items-center justify-between gap-2 border-b border-border bg-background/95 px-3 py-3 backdrop-blur min-[360px]:px-4">
+        <div className="flex min-w-0 items-center gap-2">
           <Link
             to="/app"
             className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface"
@@ -170,90 +179,69 @@ function MarketPage() {
             </div>
           </div>
         </div>
-        <div className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-[10px] font-bold text-success">
+        <div className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-[10px] font-bold text-success">
           <span className="h-1.5 w-1.5 rounded-full bg-success pulse-dot" />
           LIVE
         </div>
       </header>
 
-      {/* P2P entry summary */}
-      <div className="mx-4 mt-3 rounded-3xl bg-foreground p-4 text-background shadow-sm">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-background/10 px-2.5 py-1 text-[10px] font-extrabold">
-          <ShieldCheck className="h-3.5 w-3.5" /> 에스크로 보호 P2P
-        </div>
-        <h1 className="mt-3 text-[22px] font-black leading-tight">
-          {fiat}로 {base}를 사고팔 오퍼를 바로 찾으세요
-        </h1>
-        <p className="mt-2 text-[11px] font-semibold leading-relaxed text-background/70">
-          구매/판매 방향을 고르고, 코인·금액·결제수단 필터로 맞는 광고만 확인합니다. P2P교환은 별도
-          메뉴에서 진행하고, 이 화면은 법정화폐 P2P환전에 집중합니다.
-        </p>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <HeroStat label="판매 오퍼" value={`${sellOffers.length}건`} />
-          <HeroStat label="구매 오퍼" value={`${buyOffers.length}건`} />
-          <HeroStat label="기준가" value={`${fmtNum(mid)} ${fiat}`} />
-        </div>
-      </div>
-
-      {/* Pair selector — 바이낸스 P2P 스타일: 코인/통화 직접 선택 */}
-      <div className="mx-4 mt-3 rounded-2xl border border-border bg-card p-3 shadow-sm">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-1.5 text-[14px] font-extrabold text-foreground">
-              <HandCoins className="h-4 w-4 text-primary" /> 거래 코인·통화 선택
-            </div>
-            <div className="mt-1 text-[10px] font-semibold text-muted-foreground">
-              P2P환전 조건 등록은 여기서 시작하고, 등록 후 관리는 주문·내 오퍼에서 이어집니다
-            </div>
-          </div>
-          <button
-            onClick={() => setCreateGuideOpen((prev) => !prev)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-foreground px-3 text-[12px] font-extrabold text-background"
-          >
-            <Plus className="h-3.5 w-3.5" /> 간편 등록
-          </button>
-        </div>
-        <MarketPairPicker pair={pair} onChange={setPair} />
-      </div>
-
-      {/* 글로벌 시세 (CoinMarketCap) */}
-      <LivePriceBar symbol={pair.split("/")[0]} fiat={pair.split("/")[1] as "KRW" | "USD"} />
-
-      {/* P2P 시장 현황 — 활성 판매자/구매자, 가격대별 오퍼 분포 */}
-      <DepthMiniChart pair={pair} offers={allOffers} />
-
-      {/* Process shortcuts */}
-      <div className="mx-4 mt-3 grid grid-cols-2 gap-2">
-        <button
-          onClick={() => setCreateGuideOpen((prev) => !prev)}
-          className="card-lift flex items-center justify-center gap-2 rounded-2xl bg-primary px-3 py-3 text-primary-foreground"
-        >
-          <Plus className="h-4 w-4 shrink-0" />
-          <span className="truncate text-[13px] font-extrabold">현재 조건으로 등록</span>
-        </button>
-        <Link
-          to="/app/orders"
-          className="card-lift flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-3 py-3 text-foreground"
-        >
-          <Clock className="h-4 w-4 shrink-0" />
-          <span className="truncate text-[13px] font-extrabold">진행 주문</span>
-        </Link>
-      </div>
-      {createGuideOpen && (
-        <div className="mx-4 mt-2 rounded-2xl border border-primary-soft bg-primary-soft/40 p-3">
-          <div className="text-[12px] font-extrabold text-foreground">P2P환전 오퍼 간편 등록</div>
-          <div className="mt-1 text-[10px] font-semibold leading-relaxed text-muted-foreground">
-            {pair} · {tab === "sell" ? "판매 오퍼" : "구매 오퍼"} · 기준가 {fmtNum(mid)} {fiat}{" "}
-            조건으로 아래 목록과 필터를 확인한 뒤 등록하세요. 등록한 오퍼와 생성된 주문은 주문 메뉴
-            또는 내 오퍼 관리에서 계속 확인할 수 있습니다.
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="overflow-hidden border-b border-border bg-card px-3 py-2.5 min-[360px]:px-4">
+        <div className="space-y-2 rounded-2xl border border-border bg-background p-2.5 shadow-sm">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
+            <MarketActionButton
+              label="내가 줄 것"
+              value={giveAsset}
+              active={tab === "sell"}
+              onClick={() => setTab("sell")}
+            />
             <button
-              onClick={() => setAmountFilter(amountFilter || String(Math.round(mid * 100)))}
-              className="rounded-xl bg-card py-2 text-[11px] font-extrabold text-foreground"
+              onClick={switchDirection}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background"
+              aria-label="사는 방향과 파는 방향 바꾸기"
             >
-              금액 예시 채우기
+              <ArrowLeftRight className="h-3.5 w-3.5" />
             </button>
+            <MarketActionButton
+              label="내가 받을 것"
+              value={receiveAsset}
+              active={tab === "buy"}
+              onClick={() => setTab("buy")}
+            />
+          </div>
+
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(88px,108px)] gap-1.5">
+            <label className="rounded-xl border border-border bg-card px-3 py-2">
+              <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+                <span>{giveAsset} 금액 입력</span>
+                <span>메인 조건</span>
+              </div>
+              <input
+                value={amountFilter}
+                onChange={(e) => setAmountFilter(e.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                placeholder={`보낼 ${giveAsset} 금액`}
+                className="num-display h-7 w-full bg-transparent text-[16px] font-extrabold text-foreground outline-none"
+              />
+            </label>
+            <div className="min-w-0 rounded-xl bg-surface px-2 py-2 text-right min-[360px]:px-3">
+              <div className="text-[10px] font-bold text-muted-foreground">예상 수령</div>
+              <div className="num-display h-7 text-[13px] font-extrabold text-foreground">
+                {estimatedReceive
+                  ? tab === "buy"
+                    ? fmtNum(estimatedReceive, 6)
+                    : formatQuoteAmount(estimatedReceive, fiat)
+                  : "0"}
+              </div>
+              <div className="text-[10px] font-bold text-muted-foreground">{receiveAsset}</div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-primary-soft bg-primary-soft/40 px-2.5 py-2 min-[360px]:px-3">
+            <div className="text-[12px] font-extrabold text-foreground">P2P환전 메인 조건 설정</div>
+            <div className="mt-1 text-[10px] font-semibold leading-relaxed text-muted-foreground">
+              방향·페어·금액·정렬을 이 화면에서 먼저 맞추면 아래 오퍼 목록이 바로 갱신됩니다.
+              P2P교환과 같은 방식으로 조건을 잡고 주문으로 이어집니다.
+            </div>
             <Link
               to="/app/selling/new"
               search={{
@@ -261,46 +249,75 @@ function MarketPage() {
                 asset: base,
                 price: Math.round(mid),
               }}
-              className="rounded-xl bg-foreground py-2 text-center text-[11px] font-extrabold text-background"
+              className="mt-2 flex h-9 min-w-0 items-center justify-center gap-1 rounded-xl bg-foreground px-2 text-[11px] font-extrabold text-background min-[360px]:px-3 min-[360px]:text-[12px]"
             >
-              상세 조건 입력
+              <Plus className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">현재 조건으로 오퍼 등록</span>
             </Link>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Link
+                to="/app/orders"
+                className="flex h-9 min-w-0 items-center justify-center gap-1 rounded-xl bg-card px-2 text-[11px] font-extrabold text-foreground min-[360px]:px-3 min-[360px]:text-[12px]"
+              >
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">주문 관리</span>
+              </Link>
+              <Link
+                to="/app/swap"
+                className="flex h-9 min-w-0 items-center justify-center gap-1 rounded-xl bg-primary-soft px-2 text-[11px] font-extrabold text-primary min-[360px]:px-3 min-[360px]:text-[12px]"
+              >
+                <span className="truncate">P2P교환</span>
+              </Link>
+            </div>
           </div>
         </div>
-      )}
-      <div className="mx-4 mt-2">
-        <Link
-          to="/app/selling"
-          className="flex h-10 items-center justify-center rounded-2xl border border-border bg-card text-[12px] font-extrabold text-foreground"
-        >
-          내 오퍼·주문 관리
-        </Link>
-      </div>
-      <div className="mx-4 mt-2 grid grid-cols-2 gap-2">
-        <Link
-          to="/app/orders"
-          className="flex h-10 items-center justify-center rounded-2xl bg-surface text-[12px] font-extrabold text-foreground"
-        >
-          주문 전체보기
-        </Link>
-        <Link
-          to="/app/swap"
-          className="flex h-10 items-center justify-center rounded-2xl bg-primary-soft text-[12px] font-extrabold text-primary"
-        >
-          P2P교환으로 이동
-        </Link>
-      </div>
 
-      {/* Tabs */}
-      <div className="mt-3 flex gap-1 px-4">
-        <TabBtn active={tab === "buy"} onClick={() => setTab("buy")}>
-          <span className="text-success">●</span> 구매{" "}
-          <span className="ml-0.5 text-[11px] opacity-70">{sellOffers.length}</span>
-        </TabBtn>
-        <TabBtn active={tab === "sell"} onClick={() => setTab("sell")}>
-          <span className="text-destructive">●</span> 판매{" "}
-          <span className="ml-0.5 text-[11px] opacity-70">{buyOffers.length}</span>
-        </TabBtn>
+        <div className="mt-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="truncate text-[16px] font-extrabold text-foreground">
+              {giveAsset} → {receiveAsset}
+            </span>
+            <span className="min-w-0 truncate text-[10px] font-bold text-muted-foreground">
+              {primaryOfferCount}건 · 기준가 {fmtNum(mid)} {fiat}
+            </span>
+          </div>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="h-8 w-[74px] shrink-0 rounded-lg border border-border bg-background px-1.5 text-[10px] font-bold text-foreground outline-none min-[360px]:w-auto min-[360px]:px-2 min-[360px]:text-[11px]"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.key} value={option.key}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mt-2 flex max-w-full gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {PAIRS.map((nextPair) => (
+            <button
+              key={nextPair}
+              onClick={() => setPair(nextPair)}
+              className={`shrink-0 rounded-xl px-3 py-2 text-[11px] font-extrabold ${
+                pair === nextPair
+                  ? "bg-foreground text-background"
+                  : "bg-surface text-muted-foreground"
+              }`}
+            >
+              {nextPair}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-2 grid grid-cols-2 gap-1 rounded-xl bg-surface p-1">
+          <TabBtn active={tab === "buy"} onClick={() => setTab("buy")}>
+            구매 <span className="ml-0.5 text-[11px] opacity-70">{sellOffers.length}</span>
+          </TabBtn>
+          <TabBtn active={tab === "sell"} onClick={() => setTab("sell")}>
+            판매 <span className="ml-0.5 text-[11px] opacity-70">{buyOffers.length}</span>
+          </TabBtn>
+        </div>
       </div>
 
       {/* Offer filters — 구매/판매 탭에서만 노출 */}
@@ -405,12 +422,29 @@ function MarketPage() {
 
 /* PairSummary 제거 — DepthMiniChart에 통합되었습니다 */
 
-function HeroStat({ label, value }: { label: string; value: string }) {
+function MarketActionButton({
+  label,
+  value,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div className="rounded-2xl bg-background/10 px-2 py-2">
-      <div className="text-[9px] font-bold text-background/60">{label}</div>
-      <div className="num-display mt-0.5 truncate text-[12px] text-background">{value}</div>
-    </div>
+    <button
+      onClick={onClick}
+      className={`min-w-0 rounded-xl border px-2 py-2 text-left transition-colors min-[360px]:px-3 ${
+        active ? "border-primary bg-primary-soft" : "border-border bg-card"
+      }`}
+    >
+      <div className="truncate text-[10px] font-bold text-muted-foreground">{label}</div>
+      <div className="mt-0.5 truncate text-[14px] font-extrabold text-foreground min-[360px]:text-[15px]">
+        {value}
+      </div>
+    </button>
   );
 }
 
@@ -427,11 +461,11 @@ function TabBtn({
   return (
     <button
       onClick={onClick}
-      className={`flex-1 rounded-xl py-2.5 text-[12px] font-bold transition-colors ${
+      className={`min-w-0 flex-1 rounded-xl px-2 py-2.5 text-[12px] font-bold transition-colors ${
         active ? "bg-foreground text-background" : "bg-surface text-muted-foreground"
       }`}
     >
-      {children}
+      <span className="block truncate">{children}</span>
     </button>
   );
 }
