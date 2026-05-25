@@ -130,6 +130,7 @@ function ChatRoom() {
         isBuyer={isBuyer}
         userId={actorId}
         onOrderChange={refreshOrder}
+        onMessagesChange={refreshMessages}
         isCryptoSwap={isCryptoSwap}
       />
 
@@ -262,12 +263,14 @@ function ActionBar({
   isBuyer,
   userId,
   onOrderChange,
+  onMessagesChange,
   isCryptoSwap,
 }: {
   order: OrderRow;
   isBuyer: boolean;
   userId?: string;
   onOrderChange?: () => void | Promise<void>;
+  onMessagesChange?: () => void | Promise<void>;
   isCryptoSwap: boolean;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
@@ -277,6 +280,7 @@ function ActionBar({
     if (!userId) return;
     try {
       await sendMessage(order.id, userId, text);
+      await onMessagesChange?.();
     } catch {
       /* ignore */
     }
